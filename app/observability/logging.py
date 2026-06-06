@@ -5,28 +5,28 @@ from typing import Any
 
 import structlog
 
-# Keys whose values must never be emitted in logs (secrets + obvious PII).
+# Exact PII/secret key names that must never be emitted in logs.
 _REDACT_KEYS = frozenset(
     {
-        "anthropic_api_key",
-        "openai_api_key",
-        "modelserver_token",
-        "guardrails_token",
-        "vault_token",
         "database_url",
         "redis_url",
-        "password",
-        "token",
-        "secret",
         "authorization",
-        "api_key",
         "patient_name",
         "ssn",
         "email",
     }
 )
 
+# Any key containing one of these substrings is redacted (catches *_api_key, *_token, etc.).
+_REDACT_SUBSTRINGS = ("api_key", "secret", "token", "password")
+
 _REDACTED = "***redacted***"
+
+
+def _is_sensitive(key: str) -> bool:
+    """True if a log key names a secret or PII value that must be redacted."""
+    lowered = key.lower()
+    return lowered in _REDACT_KEYS or any(s in lowered for s in _REDACT_SUBSTRINGS)
 
 
 def _redact_processor(
@@ -34,7 +34,7 @@ def _redact_processor(
 ) -> dict[str, Any]:
     """Replace the value of any secret/PII-named key with a redaction marker."""
     for key in list(event_dict.keys()):
-        if key.lower() in _REDACT_KEYS:
+        if _is_sensitive(key):
             event_dict[key] = _REDACTED
     return event_dict
 
