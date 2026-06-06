@@ -8,6 +8,7 @@ from slowapi.util import get_remote_address
 
 from app.api import health
 from app.core.lifespan import lifespan
+from app.observability.headers import add_security_headers
 
 
 def create_app() -> FastAPI:
@@ -19,7 +20,7 @@ def create_app() -> FastAPI:
     app.state.limiter = Limiter(key_func=get_remote_address)
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
-    # Security-response headers are added in the US5 phase.
+    add_security_headers(app)  # baseline HSTS / frame / nosniff / referrer / CSP (FR-010)
     return app
 
 
