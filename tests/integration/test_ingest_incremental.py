@@ -21,21 +21,17 @@ from app.ingestion.enums import SourceName, SourceReliability  # noqa: E402
 # ---------------------------------------------------------------------------
 
 
-async def test_watermark_advances_after_successful_run(auth_app):
+async def test_watermark_advances_after_successful_run(auth_app, make_client):
     """After a successful run the watermark is advanced; a second run passes it as `since`."""
     from app.auth.backend import password_helper
     from app.auth.models import User
-    from app.clients.models import Client, Watchlist
+    from app.clients.models import Watchlist
     from app.ingestion.runner import run_ingestion
     from app.ingestion.service import create_run, get_watermark
 
     factory = auth_app.state.session_factory
 
-    async with factory() as s:
-        async with s.begin():
-            c = Client(name="watermark-client", status="active")
-            s.add(c)
-        await s.refresh(c)
+    c = await make_client()
 
     async with factory() as s:
         async with s.begin():
@@ -87,7 +83,6 @@ async def test_watermark_advances_after_successful_run(auth_app):
         value = "aspirin"
         mesh_validity = None
 
-    # First run — no watermark; adapter should receive the lookback start.
     async with factory() as s:
         async with s.begin():
             run1 = await create_run(
@@ -104,7 +99,6 @@ async def test_watermark_advances_after_successful_run(auth_app):
         initial_lookback_days=365,
     )
 
-    # Watermark should now be advanced.
     async with factory() as s:
         wm = await get_watermark(s, wl.id, SourceName.PUBMED)
 
@@ -112,9 +106,8 @@ async def test_watermark_advances_after_successful_run(auth_app):
     assert wm.watermark_at is not None
 
     first_call_since = calls[0]
-    assert first_call_since is not None  # lookback was passed
+    assert first_call_since is not None
 
-    # Second run — watermark read; fetch gets `since` = watermark.
     async with factory() as s:
         async with s.begin():
             run2 = await create_run(
@@ -133,25 +126,20 @@ async def test_watermark_advances_after_successful_run(auth_app):
 
     second_call_since = calls[1]
     assert second_call_since is not None
-    # Second run's `since` should be at least as recent as first run's watermark.
     assert second_call_since >= first_call_since
 
 
-async def test_first_run_uses_lookback_window(auth_app):
+async def test_first_run_uses_lookback_window(auth_app, make_client):
     """Without a watermark the runner passes `now - initial_lookback_days` as `since` (SC-010)."""
     from app.auth.backend import password_helper
     from app.auth.models import User
-    from app.clients.models import Client, Watchlist
+    from app.clients.models import Watchlist
     from app.ingestion.runner import run_ingestion
     from app.ingestion.service import create_run
 
     factory = auth_app.state.session_factory
 
-    async with factory() as s:
-        async with s.begin():
-            c = Client(name="lookback-client", status="active")
-            s.add(c)
-        await s.refresh(c)
+    c = await make_client()
 
     async with factory() as s:
         async with s.begin():
@@ -213,7 +201,6 @@ async def test_first_run_uses_lookback_window(auth_app):
 
     since = received_since[0]
     assert since is not None
-    # The since value should be approximately `now - lookback_days` at the time of the run.
     expected_min = before_run - timedelta(days=lookback_days)
     expected_max = after_run - timedelta(days=lookback_days)
     assert expected_min <= since <= expected_max

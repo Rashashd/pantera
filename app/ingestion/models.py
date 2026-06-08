@@ -25,7 +25,9 @@ class Document(Base):
     __tablename__ = "documents"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    client_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("clients.id"), nullable=False)
+    client_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("clients.id", ondelete="CASCADE"), nullable=False
+    )
     normalized_external_id: Mapped[str] = mapped_column(String(512), nullable=False)
     source_reliability: Mapped[str] = mapped_column(String(20), nullable=False)
     title: Mapped[str | None] = mapped_column(String(1024), nullable=True)
@@ -104,7 +106,7 @@ class DocumentWatchlist(Base):
     )
     client_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     first_run_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("ingestion_runs.id"), nullable=True
+        BigInteger, ForeignKey("ingestion_runs.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -125,10 +127,10 @@ class IngestionRun(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     client_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("clients.id"), nullable=False)
     watchlist_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("watchlists.id"), nullable=False
+        BigInteger, ForeignKey("watchlists.id", ondelete="CASCADE"), nullable=False
     )
-    triggered_by_user_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("users.id"), nullable=False
+    triggered_by_user_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="running")
     started_at: Mapped[datetime] = mapped_column(

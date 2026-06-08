@@ -30,7 +30,12 @@ def upgrade() -> None:
     op.create_table(
         "documents",
         sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
-        sa.Column("client_id", sa.BigInteger(), sa.ForeignKey("clients.id"), nullable=False),
+        sa.Column(
+            "client_id",
+            sa.BigInteger(),
+            sa.ForeignKey("clients.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("normalized_external_id", sa.String(512), nullable=False),
         sa.Column("source_reliability", sa.String(20), nullable=False),
         sa.Column("title", sa.String(1024), nullable=True),
@@ -101,12 +106,17 @@ def upgrade() -> None:
         "ingestion_runs",
         sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
         sa.Column("client_id", sa.BigInteger(), sa.ForeignKey("clients.id"), nullable=False),
-        sa.Column("watchlist_id", sa.BigInteger(), sa.ForeignKey("watchlists.id"), nullable=False),
+        sa.Column(
+            "watchlist_id",
+            sa.BigInteger(),
+            sa.ForeignKey("watchlists.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column(
             "triggered_by_user_id",
             sa.BigInteger(),
-            sa.ForeignKey("users.id"),
-            nullable=False,
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
         ),
         sa.Column("status", sa.String(16), nullable=False, server_default="running"),
         sa.Column(
@@ -149,7 +159,7 @@ def upgrade() -> None:
         sa.Column(
             "first_run_id",
             sa.BigInteger(),
-            sa.ForeignKey("ingestion_runs.id"),
+            sa.ForeignKey("ingestion_runs.id", ondelete="SET NULL"),
             nullable=True,
         ),
         sa.Column(

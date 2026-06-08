@@ -59,24 +59,19 @@ async def _poll_run(client, headers, run_id, max_polls=15):
 # ---------------------------------------------------------------------------
 
 
-async def test_partial_success_with_failing_adapter(auth_app, make_client, make_user):
+async def test_partial_success_with_failing_adapter(auth_app, make_client):
     """One source fails → partial_success; others persist; error is captured (FR-011/FR-012)."""
     from unittest.mock import AsyncMock
 
+    from app.auth.backend import password_helper
+    from app.auth.models import User
+    from app.clients.models import Watchlist
     from app.ingestion.adapters import RawRecord
     from app.ingestion.enums import IngestionRunStatus, SourceName, SourceReliability
 
     factory = auth_app.state.session_factory
 
-    from app.auth.backend import password_helper
-    from app.auth.models import User
-    from app.clients.models import Client, Watchlist
-
-    async with factory() as s:
-        async with s.begin():
-            c = Client(name="partial-client", status="active")
-            s.add(c)
-        await s.refresh(c)
+    c = await make_client()
 
     async with factory() as s:
         async with s.begin():
@@ -107,7 +102,6 @@ async def test_partial_success_with_failing_adapter(auth_app, make_client, make_
         async with s.begin():
             run = await create_run(s, client_id=c.id, watchlist_id=wl.id, triggered_by_user_id=u.id)
 
-    # Two fake adapters: one succeeds with one record, one raises.
     good_record = RawRecord(
         source=SourceName.PUBMED,
         source_external_id="PM-PART-001",
@@ -146,9 +140,8 @@ async def test_partial_success_with_failing_adapter(auth_app, make_client, make_
 
     assert finished is not None
     assert finished.status == IngestionRunStatus.PARTIAL_SUCCESS.value
-    assert finished.created_count >= 1  # at least the good adapter's record
+    assert finished.created_count >= 1
 
-    # The error is captured in the run_sources row.
     async with factory() as s:
         from sqlalchemy import select
 
@@ -175,22 +168,18 @@ async def test_partial_success_with_failing_adapter(auth_app, make_client, make_
 # ---------------------------------------------------------------------------
 
 
-async def test_startup_sweep_reconciles_running_runs(auth_app):
+async def test_startup_sweep_reconciles_running_runs(auth_app, make_client):
     """Runs left in 'running' at startup are swept to 'failed'; re-run creates no duplicates."""
     from app.auth.backend import password_helper
     from app.auth.models import User
-    from app.clients.models import Client, Watchlist
+    from app.clients.models import Watchlist
     from app.ingestion.enums import IngestionRunStatus
     from app.ingestion.models import IngestionRun
     from app.ingestion.service import reconcile_interrupted_runs
 
     factory = auth_app.state.session_factory
 
-    async with factory() as s:
-        async with s.begin():
-            c = Client(name="sweep-client", status="active")
-            s.add(c)
-        await s.refresh(c)
+    c = await make_client()
 
     async with factory() as s:
         async with s.begin():
@@ -214,7 +203,6 @@ async def test_startup_sweep_reconciles_running_runs(auth_app):
             s.add(u)
         await s.refresh(u)
 
-    # Simulate a run stuck in 'running'.
     async with factory() as s:
         async with s.begin():
             stuck_run = IngestionRun(
@@ -226,14 +214,12 @@ async def test_startup_sweep_reconciles_running_runs(auth_app):
             s.add(stuck_run)
         await s.refresh(stuck_run)
 
-    # Run the startup sweep.
     async with factory() as s:
         async with s.begin():
             count = await reconcile_interrupted_runs(s)
 
     assert count >= 1
 
-    # The stuck run should now be 'failed'.
     async with factory() as s:
         refreshed = await s.get(IngestionRun, stuck_run.id)
 
@@ -253,13 +239,11 @@ async def test_inactive_watchlist_refuses_trigger(client, make_client, make_user
     wl = await _create_watchlist(client, headers, name="lifecycle-wl", drug="atenolol")
     wl_id = wl["id"]
 
-    # Deactivate the watchlist.
     patch_resp = await client.patch(
         f"/watchlists/{wl_id}", json={"is_active": False}, headers=headers
     )
     assert patch_resp.status_code == 200
 
-    # Trigger should return 400 (inactive).
     trigger_resp = await client.post(f"/watchlists/{wl_id}/ingest", headers=headers)
     assert trigger_resp.status_code == 400
 
@@ -269,24 +253,20 @@ async def test_inactive_watchlist_refuses_trigger(client, make_client, make_user
 # ---------------------------------------------------------------------------
 
 
-async def test_zero_result_run_is_success(auth_app, make_client, make_user):
+async def test_zero_result_run_is_success(auth_app, make_client):
     """A source returning no records still yields run=success and created/errored=0 (FR-015)."""
     from unittest.mock import AsyncMock
 
     from app.auth.backend import password_helper
     from app.auth.models import User
-    from app.clients.models import Client, Watchlist
+    from app.clients.models import Watchlist
     from app.ingestion.enums import IngestionRunStatus, SourceName, SourceReliability
     from app.ingestion.runner import run_ingestion
     from app.ingestion.service import create_run, get_run
 
     factory = auth_app.state.session_factory
 
-    async with factory() as s:
-        async with s.begin():
-            c = Client(name="zero-result-client", status="active")
-            s.add(c)
-        await s.refresh(c)
+    c = await make_client()
 
     async with factory() as s:
         async with s.begin():
@@ -350,14 +330,14 @@ async def test_zero_result_run_is_success(auth_app, make_client, make_user):
 # ---------------------------------------------------------------------------
 
 
-async def test_pii_free_logging(auth_app, caplog):
+async def test_pii_free_logging(auth_app, make_client, caplog):
     """FAERS raw payload with patient data is never emitted in structlog output (FR-023)."""
     import logging
     from unittest.mock import AsyncMock
 
     from app.auth.backend import password_helper
     from app.auth.models import User
-    from app.clients.models import Client, Watchlist
+    from app.clients.models import Watchlist
     from app.ingestion.adapters import RawRecord
     from app.ingestion.enums import SourceName, SourceReliability
     from app.ingestion.runner import run_ingestion
@@ -365,11 +345,7 @@ async def test_pii_free_logging(auth_app, caplog):
 
     factory = auth_app.state.session_factory
 
-    async with factory() as s:
-        async with s.begin():
-            c = Client(name="pii-client", status="active")
-            s.add(c)
-        await s.refresh(c)
+    c = await make_client()
 
     async with factory() as s:
         async with s.begin():
@@ -397,9 +373,6 @@ async def test_pii_free_logging(auth_app, caplog):
         async with s.begin():
             run = await create_run(s, client_id=c.id, watchlist_id=wl.id, triggered_by_user_id=u.id)
 
-    # FAERS record with a patient field — raw_payload intentionally does NOT include patient
-    # (that stripping is in _parse_faers_response). Simulate a leaky payload here to ensure
-    # the runner never logs it.
     pii_record = RawRecord(
         source=SourceName.OPENFDA_FAERS,
         source_external_id="US-FDA-PII-001",
@@ -427,7 +400,6 @@ async def test_pii_free_logging(auth_app, caplog):
             adapters=[leaky_adapter],
         )
 
-    # The raw_payload (including the patient dict) must never appear in logs.
     log_text = " ".join(caplog.messages)
     assert "patientbirthdate" not in log_text, "PII field leaked into logs"
     assert "19800101" not in log_text, "PII value leaked into logs"
