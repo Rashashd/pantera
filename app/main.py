@@ -28,9 +28,9 @@ def create_app() -> FastAPI:
     app.include_router(staff_router)  # spec 4b: manager-owned staff account CRUD
     app.include_router(clients_router)  # spec 3/4b: client lifecycle + own-client routes
     app.include_router(client_users_router)  # spec 4b: client-user management per named client
-    app.include_router(watchlists_router)  # spec 3: watchlist CRUD + items + per-watchlist config
-    app.include_router(ingestion_router)  # spec 4: trigger + run-status endpoints
-    app.include_router(documents_router)  # spec 4: document browse endpoints
+    app.include_router(watchlists_router)  # spec 3/4b: /clients/{id}/watchlists CRUD + items
+    app.include_router(ingestion_router)  # spec 4/4b: /clients/{id}/watchlists/{id}/ingest + runs
+    app.include_router(documents_router)  # spec 4/4b: /clients/{id}/documents browse
     # Rate-limit machinery (FR-011): a default in-memory limiter so the middleware works
     # before startup; the lifespan upgrades app.state.limiter to the Redis-backed one.
     app.state.limiter = Limiter(key_func=get_remote_address)
