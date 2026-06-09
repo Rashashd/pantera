@@ -7,6 +7,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
 from app.api import health
+from app.auth.routes_auth import _users_me_router as auth_me_router
 from app.auth.routes_auth import router as auth_router
 from app.auth.routes_staff import router as staff_router
 from app.clients.routes_client_users import router as client_users_router
@@ -23,6 +24,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Pantera", version="0.1.0", lifespan=lifespan)
     app.include_router(health.router)
     app.include_router(auth_router)  # spec 2: /auth/jwt/login (rate-limited), /logout
+    app.include_router(auth_me_router)  # spec 4b: PATCH /auth/users/me (self-service pw change)
     app.include_router(staff_router)  # spec 4b: manager-owned staff account CRUD
     app.include_router(clients_router)  # spec 3/4b: client lifecycle + own-client routes
     app.include_router(client_users_router)  # spec 4b: client-user management per named client

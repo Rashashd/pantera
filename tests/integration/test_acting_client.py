@@ -219,9 +219,10 @@ async def test_client_user_cannot_name_other_client(probed_client, make_tenant, 
             s.add(user)
 
     token = await login_token(probed_client, email, pw)
-    # Client-user names client_b → 404 (no existence leak, SC-009)
+    # Client-user names client_b on a no-role-guard route → 404 (existence not leaked, SC-009).
+    # Use probe-read (no require_admin) so acting_client runs before any role check.
     resp = await probed_client.get(
-        f"/_test/clients/{client_b.id}/probe",
+        f"/_test/clients/{client_b.id}/probe-read",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 404

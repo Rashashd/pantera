@@ -49,7 +49,19 @@ def upgrade() -> None:
     op.alter_column("users", "client_id", existing_type=sa.BigInteger(), nullable=True)
     op.create_foreign_key("fk_users_client_id_clients", "users", "clients", ["client_id"], ["id"])
 
-    # Add integrity CHECKs.
+    # --- DATA RESET (dev: wipe users + their FK-dependent rows; preserve docs/watchlists) ——
+    # Must run BEFORE the ck_users_type_client constraint: legacy rows have user_type='staff'
+    # (server_default) but client_id IS NOT NULL, which would violate the new constraint.
+    # Order: most-dependent FK first. audit_log.actor_user_id is nullable; NULL before delete.
+    conn = op.get_bind()
+    conn.execute(sa.text("DELETE FROM ingestion_run_sources"))
+    conn.execute(sa.text("DELETE FROM ingestion_runs"))
+    conn.execute(
+        sa.text("UPDATE audit_log SET actor_user_id = NULL WHERE actor_user_id IS NOT NULL")
+    )
+    conn.execute(sa.text("DELETE FROM users"))
+
+    # Add integrity CHECKs (safe now that the pre-agency users are gone).
     op.create_check_constraint("ck_users_type_client", "users", _TYPE_CLIENT_CHECK)
     op.create_check_constraint("ck_users_client_scope", "users", _CLIENT_SCOPE_CHECK)
     op.create_check_constraint("ck_users_min_severity", "users", _MIN_SEVERITY_CHECK)
@@ -97,16 +109,6 @@ def upgrade() -> None:
     )
     op.create_index("ix_user_watchlist_scope_user_id", "user_watchlist_scope", ["user_id"])
     op.create_index("ix_user_watchlist_scope_client_id", "user_watchlist_scope", ["client_id"])
-
-    # --- DATA RESET (dev: wipe users + their FK-dependent rows; preserve docs/watchlists) ——
-    # Order: most-dependent FK first.  audit_log.actor_user_id is nullable; set NULL before delete.
-    conn = op.get_bind()
-    conn.execute(sa.text("DELETE FROM ingestion_run_sources"))
-    conn.execute(sa.text("DELETE FROM ingestion_runs"))
-    conn.execute(
-        sa.text("UPDATE audit_log SET actor_user_id = NULL WHERE actor_user_id IS NOT NULL")
-    )
-    conn.execute(sa.text("DELETE FROM users"))
 
 
 def downgrade() -> None:
