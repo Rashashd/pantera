@@ -509,3 +509,16 @@ and the target client.
   to the report spec, where the most sensitive readable artifact (finished reports) exists.
 - **Cross-client platform-operator console**: A dedicated operator UI surface is a later frontend
   concern.
+- **Policy engine (Casbin) for authorization**: This spec uses plain role guards + `acting_client` +
+  scope checks, which is sufficient for the fixed 4-role model. Adopt an external policy engine (e.g.,
+  Casbin RBAC-with-domains/ABAC) **only if** authorization later outgrows simple RBAC — concretely, when
+  any of these appear: many distinct resource types with per-object ACLs, customer-configurable
+  authorization policies, role delegation/sharing, or record-level grants beyond the
+  severity/watchlist scope. Until then it adds a dependency + policy DSL for little gain (Constitution
+  VI/VII). Deferred, not planned.
+- **Row-Level Security (RLS) defense-in-depth**: DB-enforced tenant isolation (Postgres RLS) so a
+  forgotten app-layer `client_id` filter cannot leak cross-tenant rows. A strong fit for this regulated,
+  isolation-critical product, but it requires role-aware policies (staff cross-client vs client-user
+  own-client) and careful async/pooled session-context plumbing (`SET LOCAL` per transaction +
+  `BYPASSRLS` for migrations/seed) — too much to bundle with this foundation revision. **Folded into the
+  Spec 12 security-hardening scope** (alongside Presidio redaction / NeMo guardrails), not built here.
