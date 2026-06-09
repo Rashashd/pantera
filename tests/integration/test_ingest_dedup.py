@@ -77,6 +77,8 @@ async def test_rerun_zero_duplicates(client, make_client, make_staff_user, auth_
         pytest.skip("Run did not complete in time")
 
     created1 = run1["counts"]["created"]
+    if created1 == 0:
+        pytest.skip("Run 1 found 0 documents (live API failure) — dedup cannot be verified")
 
     run2 = await _trigger_and_wait(client, headers, tenant.id, wl_id)
     if run2 is None:
