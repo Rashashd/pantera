@@ -91,6 +91,7 @@ users (acting staff) ──→ ingestion_runs.triggered_by_user_id         (now 
 | `ClientReportEmailChanged` | `target_client_id`, `changes` | **new** |
 | `ClientUserCreated` | `target_client_id`, `target_user_id`, `client_scope` | **new** |
 | `ClientUserScopeChanged` | `target_client_id`, `target_user_id`, `changes` | **new** |
+| `WatchlistActivationChanged` | `target_client_id`, `watchlist_id`, `is_active` | **new** (FR-027: staff-admin watchlist (de)activation) |
 
 The audit handler persists `target_client_id` as the acted-upon client (D11). Audit log is append-only
 even for a manager (FR-020) — no update/delete path exists; asserted in tests.

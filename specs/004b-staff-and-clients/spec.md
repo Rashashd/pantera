@@ -40,6 +40,7 @@ This is a **backend/API-only** spec. No frontend, no report drafting, no notific
 - Q: What happens to a client-user's watchlist scope when a scoped watchlist is deactivated? → A: **Scope links persist** through a watchlist soft-deactivation (data is preserved, mirroring client soft-delete); only a true hard-delete of a watchlist cascades its scope links away. An inactive watchlist simply yields no new reports.
 - Q: What happens to an in-flight ingestion run when its client is soft-deleted mid-run? → A: **The in-flight run finishes and records its result**; no new run is accepted afterward (consistent with spec-4 FR-024). Already-ingested data is preserved.
 - Q: Do the per-client recipient emails hold one address or several? → A: **A single address each** — one regular recipient and one urgent recipient per client; multiple recipients per category is a documented future improvement.
+- Q: Can staff admins deactivate individual watchlists separately from suspending a client? → A: **Yes** — a staff admin (or manager) may activate/deactivate any client's individual watchlist (the spec-3 `watchlists.is_active` flag) via the acting-client model, **independently of client status**. A deactivated watchlist blocks new ingestion for that watchlist **only**; a suspended client blocks **all** its watchlists. The two controls are orthogonal; both are audited (FR-027).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -106,9 +107,9 @@ non-manager cannot create, soft-delete, or reactivate a client.
 
 1. **Given** a signed-in manager, **When** they create a client, **Then** the client is persisted
    active, and the creation is audited and attributed to that manager.
-2. **Given** an active client, **When** a manager soft-deletes it, **Then** the client is marked
-   inactive, no new ingestion run is accepted for it, its client-side users can no longer sign in,
-   and **all** of its existing data is preserved (nothing deleted).
+2. **Given** an active client, **When** a manager soft-deletes it, **Then** the client's status is set
+   to **suspended**, no new ingestion run is accepted for it, its client-side users can no longer sign
+   in, and **all** of its existing data is preserved (nothing deleted).
 3. **Given** a soft-deleted client, **When** a manager reactivates it, **Then** it becomes active
    again, new ingestion runs are accepted, and its client-side users may sign in again.
 4. **Given** a non-manager staff user (admin or reviewer), **When** they attempt to create,
@@ -303,10 +304,11 @@ and the target client.
   `client_id` from a normal request body (they are derived/validated server-side).
 - **FR-010**: System MUST allow a **manager** to **create a client**, persisting it active, replacing
   the hand-run operator seed script as the supported creation path.
-- **FR-011**: System MUST allow a **manager** to **soft-delete** a client by marking it inactive, which
-  MUST stop acceptance of new ingestion runs for it and block its client-side users from signing in,
-  while **preserving all** of the client's documents, watchlists, runs, watermarks, and audit (no
-  destructive delete); and MUST allow a manager to **reactivate** a soft-deleted client.
+- **FR-011**: System MUST allow a **manager** to **soft-delete** a client by setting its **status to
+  `suspended`** (the existing `clients.status` field), which MUST stop acceptance of new ingestion runs
+  for it and block its client-side users from signing in, while **preserving all** of the client's
+  documents, watchlists, runs, watermarks, and audit (no destructive delete); and MUST allow a manager
+  to **reactivate** a suspended client (status → `active`).
 - **FR-012**: System MUST NOT provide any path that **hard-deletes** a client (or cascades a client
   deletion into its watchlists/users/documents) in this spec; retention of data and audit is
   guaranteed.
@@ -371,6 +373,13 @@ and the target client.
 - **FR-026**: System MUST validate all inputs at the API boundary and reject malformed input with
   clear, non-leaking messages, leaving persisted state unchanged on rejection; unauthenticated callers
   MUST be refused before any role or tenant check.
+- **FR-027**: System MUST allow a **staff admin** (or manager) to **activate or deactivate an individual
+  watchlist** (the existing spec-3 `watchlists.is_active` flag) for **any** client via the acting-client
+  model, **independently of the client's status**. A **deactivated watchlist** accepts no new ingestion
+  runs but affects **only that watchlist**; a **suspended client** blocks new ingestion for **all** of
+  its watchlists regardless of each watchlist's own flag (the two controls are orthogonal). Watchlist
+  (de)activation is audited and obeys the same cross-client staff authorization as every other
+  client-scoped action (FR-008). Reviewers and client-users MUST NOT (de)activate watchlists.
 
 ### Key Entities *(include if data involved)*
 
