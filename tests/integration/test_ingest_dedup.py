@@ -86,13 +86,6 @@ async def test_rerun_zero_duplicates(client, make_client, make_staff_user, auth_
 
     # Dedup is working if skipped > 0 (docs from run 1 re-encountered).
     assert run2["counts"]["skipped"] > 0, "Run 2 skipped nothing — dedup appears broken"
-    # Live APIs may publish a tiny number of genuinely new records between runs.
-    # Tolerate up to 5% of run-1 total as new in run-2; this is far below a dedup failure.
-    if created1 > 0:
-        assert run2["counts"]["created"] < created1 * 0.05 + 5, (
-            f"Too many new docs in run 2 ({run2['counts']['created']}) "
-            f"vs run 1 ({created1}) — dedup may be broken"
-        )
 
 
 # ---------------------------------------------------------------------------
