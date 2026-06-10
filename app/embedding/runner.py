@@ -11,12 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.embedding.chunking import Chunker
 from app.embedding.enums import DocumentIndexStatus, IndexBuildRunStatus
-from app.embedding.models import Chunk, DocumentIndexState, IndexBuildRun
+from app.embedding.models import Chunk, IndexBuildRun
 from app.embedding.router import ParseError, route
 from app.embedding.service import IndexBuildService
 from app.embedding.tokenizer import EmbedderTokenizer
 from app.infra.modelserver_client import ModelserverClient
-from app.ingestion.enums import SourceName
 
 _log = structlog.get_logger(__name__)
 
@@ -27,7 +26,7 @@ async def index_build_runner(
     modelserver_client: ModelserverClient | None = None,
     triggered_by_user_id: int | None = None,
 ) -> IndexBuildRun:
-    """Execute a full index build for a client: parse → chunk → embed → persist (FR-009/FR-010/FR-025).
+    """Execute a full index build: parse → chunk → embed → persist (FR-009/FR-010/FR-025).
 
     Args:
         session_factory: Callable that returns an AsyncSession.
@@ -78,7 +77,7 @@ async def index_build_runner(
                         )
                 return run
 
-        # Get documents to index for this client (not_indexed / errored_transient + active watchlist)
+        # Get documents to index (not_indexed/errored_transient + active watchlist)
         async with session_factory() as session:
             documents = await IndexBuildService.get_documents_to_index(session, client_id)
 
@@ -168,8 +167,6 @@ async def _process_document(
     Returns:
         (success, chunk_count) where success is True/False/None (skipped).
     """
-    extra_log = {"client_id": client_id, "document_id": document.id, "run_id": run_id}
-
     # Check if document should be skipped (check state outside transaction first)
     async with session_factory() as session:
         index_state = await IndexBuildService.get_or_create_index_state(
@@ -182,7 +179,12 @@ async def _process_document(
         )
 
     if should_skip:
-        _log.info("skipping document already processed", client_id=client_id, document_id=document.id, run_id=run_id)
+        _log.info(
+            "skipping document already processed",
+            client_id=client_id,
+            document_id=document.id,
+            run_id=run_id,
+        )
         return (None, 0)
 
     # Select the best source payload (FR-024)
@@ -315,9 +317,13 @@ async def _process_document(
 
             # Validate embedding dimension (FR-016)
             if not isinstance(embedding_vector, list) or len(embedding_vector) != 768:
+                dim = (
+                    len(embedding_vector)
+                    if isinstance(embedding_vector, list)
+                    else "not a list"
+                )
                 raise ValueError(
-                    f"Invalid embedding dimension: expected 768, "
-                    f"got {len(embedding_vector) if isinstance(embedding_vector, list) else 'not a list'}"
+                    f"Invalid embedding dimension: expected 768, got {dim}"
                 )
 
             chunk = Chunk(
@@ -360,7 +366,14 @@ async def _process_document(
         return (True, len(chunk_rows))
 
     except Exception as e:
-        _log.error("failed to persist chunks for document", client_id=client_id, document_id=document.id, run_id=run_id, error=str(e), exc_info=True)
+        _log.error(
+            "failed to persist chunks for document",
+            client_id=client_id,
+            document_id=document.id,
+            run_id=run_id,
+            error=str(e),
+            exc_info=True,
+        )
         async with session_factory() as session:
             async with session.begin():
                 index_state = await IndexBuildService.get_or_create_index_state(

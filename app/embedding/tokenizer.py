@@ -1,6 +1,5 @@
 """Tokenizer loading and token counting utilities."""
 
-import json
 from pathlib import Path
 
 from tokenizers import Tokenizer  # type: ignore

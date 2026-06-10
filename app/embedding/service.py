@@ -4,7 +4,6 @@ from datetime import datetime
 
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 
 from app.clients.models import Watchlist
 from app.embedding.enums import DocumentIndexStatus, IndexBuildRunStatus
@@ -169,8 +168,6 @@ class IndexBuildService:
 
         Idempotency guarantee: excludes indexed/indexed_empty/errored_permanent.
         """
-        from sqlalchemy.orm import joinedload
-
         # Subquery: get document IDs linked to at least one active watchlist
         active_watchlist_docs = (
             select(DocumentWatchlist.document_id)
@@ -195,7 +192,7 @@ class IndexBuildService:
             .where(
                 or_(
                     # Not yet indexed at all
-                    DocumentIndexState.id == None,
+                    DocumentIndexState.id.is_(None),
                     # Transient failure (eligible for retry)
                     DocumentIndexState.status == DocumentIndexStatus.ERRORED_TRANSIENT,
                     # Not yet indexed status

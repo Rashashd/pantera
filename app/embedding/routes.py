@@ -6,16 +6,13 @@ import structlog
 from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_acting_client, get_acting_client_read, require_admin
 from app.auth.models import User
-from app.clients import service as client_service
 from app.clients.models import Client
-from app.core.dependencies import get_session
 from app.domain.events import IndexBuildTriggered
 from app.embedding import service as embedding_service
-from app.embedding.models import DocumentIndexState, IndexBuildRun
+from app.embedding.models import DocumentIndexState
 from app.embedding.runner import index_build_runner
 from app.embedding.schemas import DocumentIndexStateOut, IndexBuildRunOut
 from app.infra.modelserver_client import ModelserverClient
