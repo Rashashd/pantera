@@ -87,7 +87,7 @@ async def index_build_runner(
             extra={"client_id": client_id, "run_id": run.id},
         )
 
-        # Process each document
+        # Process each document and update run counters
         for document in documents:
             await _process_document(
                 session,
@@ -99,15 +99,11 @@ async def index_build_runner(
                 client_id,
             )
 
-        # Finalize run status
-        if run.documents_errored > 0 and run.documents_processed > 0:
-            run.status = IndexBuildRunStatus.PARTIAL_SUCCESS
-        elif run.documents_errored > 0:
-            run.status = IndexBuildRunStatus.FAILED
-        else:
-            run.status = IndexBuildRunStatus.SUCCESS
+        # Persist run counters
+        await session.flush()
 
-        await IndexBuildService.finish_run(session, run.id, run.status)
+        # Finalize run status (service derives it from counters)
+        await IndexBuildService.finish_run(session, run.id)
         logger.info(
             "Index build run finished",
             extra={
@@ -121,8 +117,7 @@ async def index_build_runner(
 
     except Exception as e:
         logger.error(f"Unexpected error during index build: {e}", exc_info=True)
-        run.status = IndexBuildRunStatus.FAILED
-        await IndexBuildService.finish_run(session, run.id, run.status)
+        await IndexBuildService.finish_run(session, run.id, IndexBuildRunStatus.FAILED)
 
     finally:
         await session.commit()

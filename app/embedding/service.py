@@ -46,14 +46,37 @@ class IndexBuildService:
         return run
 
     @staticmethod
-    async def finish_run(session: AsyncSession, run_id: int, status: str) -> None:
-        """Mark a run as finished with the given status."""
+    async def finish_run(
+        session: AsyncSession, run_id: int, status: str | None = None
+    ) -> IndexBuildRun | None:
+        """Mark a run as finished; derive status if not provided (FR-010).
+
+        Status derivation:
+        - If documents_errored > 0 AND documents_processed > 0 → partial_success
+        - If documents_errored > 0 → failed
+        - Otherwise → success
+
+        Returns the updated run or None if not found.
+        """
         stmt = select(IndexBuildRun).where(IndexBuildRun.id == run_id)
         run = (await session.execute(stmt)).scalars().first()
-        if run:
-            run.status = status
-            run.finished_at = datetime.utcnow()
-            await session.flush()
+        if not run:
+            return None
+
+        # Derive status if not explicitly provided
+        if status is None:
+            if run.documents_errored > 0:
+                if run.documents_processed > 0:
+                    status = IndexBuildRunStatus.PARTIAL_SUCCESS
+                else:
+                    status = IndexBuildRunStatus.FAILED
+            else:
+                status = IndexBuildRunStatus.SUCCESS
+
+        run.status = status
+        run.finished_at = datetime.utcnow()
+        await session.flush()
+        return run
 
     @staticmethod
     async def get_run(session: AsyncSession, run_id: int) -> IndexBuildRun | None:
