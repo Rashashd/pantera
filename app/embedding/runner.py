@@ -306,6 +306,13 @@ async def _process_document(
             model_version = embedding_result.get("model_version", {})
             embedder_version = model_version.get("sha256")
 
+            # M5: Fail if embedder version is missing (no silent fallback)
+            if not embedder_version:
+                raise ValueError(
+                    "Modelserver response missing embedder version (sha256); "
+                    "cannot create versioned attestation"
+                )
+
             # Validate embedding dimension (FR-016)
             if not isinstance(embedding_vector, list) or len(embedding_vector) != 768:
                 raise ValueError(
@@ -324,7 +331,7 @@ async def _process_document(
                 source_reliability=document.source_reliability,
                 text=chunked_obj.text,
                 embedding=embedding_vector,
-                embedder_version=embedder_version or "unknown",
+                embedder_version=embedder_version,
             )
             chunk_rows.append(chunk)
 

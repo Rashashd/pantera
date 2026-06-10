@@ -7,6 +7,7 @@ from sqlalchemy import (
     BigInteger,
     DateTime,
     ForeignKey,
+    FetchedValue,
     Index,
     Integer,
     String,
@@ -43,8 +44,9 @@ class Chunk(Base):
     source_reliability: Mapped[str] = mapped_column(String(20), nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     embedding: Mapped[list[float]] = mapped_column(Vector(768), nullable=False)
-    # Note: text_tsv is a GENERATED ALWAYS AS column defined in the migration (not in ORM)
-    text_tsv: Mapped[str] = mapped_column(TSVECTOR, nullable=False)
+    text_tsv: Mapped[str] = mapped_column(
+        TSVECTOR, nullable=False, server_default=FetchedValue()
+    )
     embedder_version: Mapped[str] = mapped_column(String(64), nullable=False)  # SHA-256
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
