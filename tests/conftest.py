@@ -188,7 +188,7 @@ def modelserver_model_dir(tmp_path_factory) -> Generator[Path, None, None]:
     (d / "manifest.json").write_text(json.dumps(_build_manifest(d), indent=2))
 
     os.environ["MODEL_DIR"] = str(d)
-    os.environ["MODELSERVER_TOKEN"] = "test-service-token"
+    os.environ["MODELSERVER_TOKEN"] = "test-service-token"  # gitleaks:allow
     yield d
     os.environ.pop("MODEL_DIR", None)
     os.environ.pop("MODELSERVER_TOKEN", None)

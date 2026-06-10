@@ -50,7 +50,7 @@ import hvac, os
 c = hvac.Client(url=os.environ["VAULT_ADDR"], token=os.environ["VAULT_TOKEN"])
 c.secrets.kv.v2.create_or_update_secret(
     path="pantera/secrets",
-    secret={"modelserver_token": "NEW_TOKEN_VALUE"},
+    secret={"modelserver_token": "<your-new-token>"},
 )
 PY
 ```
