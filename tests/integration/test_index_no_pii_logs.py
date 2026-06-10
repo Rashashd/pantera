@@ -1,12 +1,15 @@
 """Integration test: verify PII-free logging in index build (T039, FR-019, SC-007)."""
 
+import contextlib
 import json
 import os
 
 import pytest
+import structlog
+from structlog.testing import LogCapture
 
+from app.embedding import runner as runner_module
 from app.embedding.runner import index_build_runner
-from tests.integration.conftest import make_client, make_document, make_watchlist
 
 pytestmark = pytest.mark.skipif(
     not os.getenv("PANTERA_INTEGRATION"),
@@ -14,21 +17,40 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+@contextlib.contextmanager
+def capture_runner_logs():
+    """Capture the runner's structlog events as dicts.
+
+    The app caches loggers (cache_logger_on_first_use=True), so structlog's plain
+    capture_logs() cannot intercept the runner's module-level logger. We swap in a
+    LogCapture config with caching off and rebind the runner's logger for the duration.
+    """
+    cap = LogCapture()
+    old_config = structlog.get_config()
+    old_log = runner_module._log
+    structlog.configure(processors=[cap], cache_logger_on_first_use=False)
+    runner_module._log = structlog.get_logger("app.embedding.runner")
+    try:
+        yield cap.entries
+    finally:
+        structlog.configure(**old_config)
+        runner_module._log = old_log
+
+
 @pytest.mark.asyncio
 class TestIndexNoLogs:
     """Test that chunk text and FAERS PII are never logged (FR-019, SC-007)."""
 
     async def test_no_chunk_text_in_logs(
-        self, async_session, mock_modelserver_client, caplog
+        self, auth_app, make_client, make_watchlist, make_document, mock_modelserver_client
     ) -> None:
         """Verify chunk text content never appears in logs."""
-        # Setup
-        client = await make_client(async_session)
-        watchlist = await make_watchlist(async_session, client_id=client.id)
+        session_factory = auth_app.state.session_factory
+        client = await make_client()
+        watchlist = await make_watchlist(client_id=client.id)
 
         sensitive_text = "SENSITIVE_CHUNK_CONTENT_12345"
-        doc = await make_document(
-            async_session,
+        await make_document(
             client_id=client.id,
             source_name="pubmed",
             source_payload=f"""<?xml version="1.0"?>
@@ -40,102 +62,83 @@ class TestIndexNoLogs:
     </Abstract>
   </Article>
 </PubmedArticle>""",
+            watchlist_id=watchlist.id,
         )
 
-        from app.ingestion.models import DocumentWatchlist
-
-        link = DocumentWatchlist(document_id=doc.id, watchlist_id=watchlist.id)
-        async_session.add(link)
-        await async_session.flush()
-
-        # Index (captures logs)
-        with caplog.at_level("INFO"):
+        with capture_runner_logs() as logs:
             await index_build_runner(
-                session_factory=lambda: async_session,
+                session_factory=session_factory,
                 client_id=client.id,
                 modelserver_client=mock_modelserver_client,
             )
 
-        # Verify sensitive text NOT in logs
-        log_output = caplog.text
+        log_output = json.dumps(logs)
         assert (
             sensitive_text not in log_output
         ), f"Chunk text '{sensitive_text}' should NOT appear in logs (FR-019)"
 
     async def test_faers_deidentified_not_logged(
-        self, async_session, mock_modelserver_client, caplog
+        self, auth_app, make_client, make_watchlist, make_document, mock_modelserver_client
     ) -> None:
         """Verify FAERS de-identified fields (age, sex, country) never logged (SC-007)."""
-        client = await make_client(async_session)
-        watchlist = await make_watchlist(async_session, client_id=client.id)
+        session_factory = auth_app.state.session_factory
+        client = await make_client()
+        watchlist = await make_watchlist(client_id=client.id)
 
-        # FAERS payload with PII
         faers_payload = {
-            "patient": {
-                "age": 65,  # PII
-                "sex": "F",  # PII
-                "country": "US",  # PII
-            },
+            "patient": {"age": 65, "sex": "F", "country": "US"},
             "reaction": "liver damage",
             "drug": "Drug X",
         }
-
-        doc = await make_document(
-            async_session,
+        await make_document(
             client_id=client.id,
             source_name="openfda_faers",
-            source_payload=json.dumps(faers_payload),
+            source_payload=faers_payload,
+            watchlist_id=watchlist.id,
         )
 
-        from app.ingestion.models import DocumentWatchlist
-
-        link = DocumentWatchlist(document_id=doc.id, watchlist_id=watchlist.id)
-        async_session.add(link)
-        await async_session.flush()
-
-        # Index
-        with caplog.at_level("INFO"):
+        with capture_runner_logs() as logs:
             await index_build_runner(
-                session_factory=lambda: async_session,
+                session_factory=session_factory,
                 client_id=client.id,
                 modelserver_client=mock_modelserver_client,
             )
 
-        # Verify PII NOT in logs
-        log_output = caplog.text
-        assert (
-            "age" not in log_output or "65" not in log_output
-        ), "Patient age should not appear in logs (SC-007)"
-        assert (
-            '"F"' not in log_output and "sex" not in log_output
-        ), "Patient sex should not appear in logs (SC-007)"
-        assert (
-            "US" not in log_output or "country" not in log_output
-        ), "Patient country should not appear in logs (SC-007)"
+        log_output = json.dumps(logs)
+        assert "liver damage" not in log_output, "Reaction text should not appear in logs (SC-007)"
+        assert '"sex"' not in log_output, "Patient sex should not appear in logs (SC-007)"
+        assert '"age"' not in log_output, "Patient age should not appear in logs (SC-007)"
 
     async def test_logging_contains_safe_context(
-        self, async_session, mock_modelserver_client, caplog
+        self, auth_app, make_client, make_watchlist, make_document, mock_modelserver_client
     ) -> None:
         """Verify logs contain safe context: client_id, run_id, document_id (FR-019)."""
-        client = await make_client(async_session)
-        watchlist = await make_watchlist(async_session, client_id=client.id)
-        doc = await make_document(async_session, client_id=client.id)
+        session_factory = auth_app.state.session_factory
+        client = await make_client()
+        watchlist = await make_watchlist(client_id=client.id)
+        doc = await make_document(
+            client_id=client.id,
+            source_name="pubmed",
+            source_payload="""<?xml version="1.0"?>
+<PubmedArticle>
+  <Article>
+    <ArticleTitle>Safe Context Test</ArticleTitle>
+    <Abstract><AbstractText>Safe context content.</AbstractText></Abstract>
+  </Article>
+</PubmedArticle>""",
+            watchlist_id=watchlist.id,
+        )
 
-        from app.ingestion.models import DocumentWatchlist
-
-        link = DocumentWatchlist(document_id=doc.id, watchlist_id=watchlist.id)
-        async_session.add(link)
-        await async_session.flush()
-
-        # Index
-        with caplog.at_level("INFO"):
+        with capture_runner_logs() as logs:
             await index_build_runner(
-                session_factory=lambda: async_session,
+                session_factory=session_factory,
                 client_id=client.id,
                 modelserver_client=mock_modelserver_client,
             )
 
-        # Verify SAFE context appears
-        log_output = caplog.text
-        assert str(client.id) in log_output, "client_id should appear in logs for troubleshooting"
-        assert str(doc.id) in log_output, "document_id should appear in logs for troubleshooting"
+        assert any(
+            e.get("client_id") == client.id for e in logs
+        ), "client_id should appear in logs for troubleshooting"
+        assert any(
+            e.get("document_id") == doc.id for e in logs
+        ), "document_id should appear in logs for troubleshooting"

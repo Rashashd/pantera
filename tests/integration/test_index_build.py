@@ -3,43 +3,17 @@
 import os
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.embedding.models import Chunk, DocumentIndexState
 from app.embedding.runner import index_build_runner
-from app.ingestion.models import DocumentWatchlist
-from tests.integration.conftest import make_client, make_document, make_watchlist
 
 pytestmark = pytest.mark.skipif(
     not os.getenv("PANTERA_INTEGRATION"),
     reason="requires PANTERA_INTEGRATION=1 and docker compose up",
 )
 
-
-@pytest.mark.asyncio
-class TestIndexBuild:
-    """Test end-to-end index build for client documents (MVP use case)."""
-
-    async def test_build_pubmed_documents_to_chunks(
-        self, async_session: AsyncSession, mock_modelserver_client
-    ) -> None:
-        """Full build: PubMed documents → chunks with embeddings + metadata.
-
-        Verifies:
-        - SC-001: Each document becomes searchable chunks with 768-dim embeddings.
-        - SC-006: Each chunk carries correct metadata (ordinal, embedder_version).
-        - SC-008: Every chunk has both dense embedding and populated text_tsv.
-        """
-        # Setup: create client, watchlist, and seeded PubMed document
-        client = await make_client(async_session)
-        watchlist = await make_watchlist(async_session, client_id=client.id)
-
-        # Create a document with PubMed source payload
-        doc = await make_document(
-            async_session,
-            client_id=client.id,
-            source_name="pubmed",
-            source_payload="""<?xml version="1.0"?>
+_PUBMED_XML = """<?xml version="1.0"?>
 <PubmedArticle>
   <Article>
     <ArticleTitle>Test Article on Diabetes</ArticleTitle>
@@ -53,33 +27,65 @@ class TestIndexBuild:
       </Section>
     </Body>
   </Article>
-</PubmedArticle>""",
-        )
+</PubmedArticle>"""
 
-        # Link document to active watchlist
-        watchlist_link = DocumentWatchlist(
-            document_id=doc.id,
+
+@pytest.mark.asyncio
+class TestIndexBuild:
+    """Test end-to-end index build for client documents (MVP use case)."""
+
+    async def test_build_pubmed_documents_to_chunks(
+        self, auth_app, make_client, make_watchlist, make_document, mock_modelserver_client
+    ) -> None:
+        """Full build: PubMed documents → chunks with embeddings + metadata.
+
+        Verifies:
+        - SC-001: Each document becomes searchable chunks with 768-dim embeddings.
+        - SC-006: Each chunk carries correct metadata (ordinal, embedder_version).
+        - SC-008: Every chunk has both dense embedding and populated text_tsv.
+        """
+        session_factory = auth_app.state.session_factory
+        client = await make_client()
+        watchlist = await make_watchlist(client_id=client.id)
+        doc = await make_document(
+            client_id=client.id,
+            source_name="pubmed",
+            source_payload=_PUBMED_XML,
             watchlist_id=watchlist.id,
         )
-        async_session.add(watchlist_link)
-        await async_session.flush()
 
-        # Run the build
-        await index_build_runner(
-            session_factory=lambda: async_session,
+        run = await index_build_runner(
+            session_factory=session_factory,
             client_id=client.id,
             modelserver_client=mock_modelserver_client,
         )
+        assert run.status in ("success", "partial_success")
+        assert run.documents_processed >= 1
+        assert run.chunks_created >= 1
 
-        # Verify: chunks exist with correct properties
-        chunks = (
-            await async_session.query(Chunk)
-            .filter(Chunk.client_id == client.id, Chunk.document_id == doc.id)
-            .all()
-        )
+        async with session_factory() as s:
+            chunks = (
+                (
+                    await s.execute(
+                        select(Chunk).where(
+                            Chunk.client_id == client.id, Chunk.document_id == doc.id
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            state = (
+                (
+                    await s.execute(
+                        select(DocumentIndexState).where(DocumentIndexState.document_id == doc.id)
+                    )
+                )
+                .scalars()
+                .first()
+            )
+
         assert len(chunks) > 0, "Should create at least one chunk from PubMed document"
-
-        # Each chunk has 768-dim embedding
         for chunk in chunks:
             assert (
                 len(chunk.embedding) == 768
@@ -88,51 +94,40 @@ class TestIndexBuild:
             assert chunk.ordinal >= 0, "Should have non-negative ordinal"
             assert chunk.client_id == client.id, "Chunk should be client-scoped"
 
-        # Document should be marked indexed
-        state = (
-            await async_session.query(DocumentIndexState)
-            .filter(DocumentIndexState.document_id == doc.id)
-            .first()
-        )
         assert state, "Should create document index state"
-        assert state.status in ("indexed", "indexed_empty"), "Should be indexed or empty"
+        assert state.status in ("indexed", "indexed_empty")
 
     async def test_build_empty_document_marked_indexed_empty(
-        self, async_session: AsyncSession, mock_modelserver_client
+        self, auth_app, make_client, make_watchlist, make_document, mock_modelserver_client
     ) -> None:
         """A document that yields no chunks is marked indexed_empty (SC-001)."""
-        client = await make_client(async_session)
-        watchlist = await make_watchlist(async_session, client_id=client.id)
-
-        # Create a document with minimal/empty payload
+        session_factory = auth_app.state.session_factory
+        client = await make_client()
+        watchlist = await make_watchlist(client_id=client.id)
         doc = await make_document(
-            async_session,
             client_id=client.id,
             source_name="pubmed",
-            source_payload="<PubmedArticle></PubmedArticle>",  # Empty
-        )
-
-        # Link to watchlist
-        watchlist_link = DocumentWatchlist(
-            document_id=doc.id,
+            source_payload="<PubmedArticle></PubmedArticle>",  # parses to zero chunks
             watchlist_id=watchlist.id,
         )
-        async_session.add(watchlist_link)
-        await async_session.flush()
 
-        # Run the build
         await index_build_runner(
-            session_factory=lambda: async_session,
+            session_factory=session_factory,
             client_id=client.id,
             modelserver_client=mock_modelserver_client,
         )
 
-        # Verify: state is indexed_empty
-        state = (
-            await async_session.query(DocumentIndexState)
-            .filter(DocumentIndexState.document_id == doc.id)
-            .first()
-        )
+        async with session_factory() as s:
+            state = (
+                (
+                    await s.execute(
+                        select(DocumentIndexState).where(DocumentIndexState.document_id == doc.id)
+                    )
+                )
+                .scalars()
+                .first()
+            )
+
         assert state, "Should create index state for empty document"
         assert state.status == "indexed_empty", "Empty document should be marked indexed_empty"
         assert state.chunk_count == 0, "Should have zero chunks"

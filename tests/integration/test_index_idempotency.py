@@ -7,30 +7,13 @@ from sqlalchemy import func, select
 
 from app.embedding.models import Chunk
 from app.embedding.runner import index_build_runner
-from tests.integration.conftest import make_client, make_document, make_watchlist
 
 pytestmark = pytest.mark.skipif(
     not os.getenv("PANTERA_INTEGRATION"),
     reason="requires PANTERA_INTEGRATION=1 and docker compose up",
 )
 
-
-@pytest.mark.asyncio
-class TestIndexIdempotency:
-    """Test that re-running a build produces 0 new chunks and 0 embed calls."""
-
-    async def test_idempotent_build_no_new_chunks(
-        self, async_session, mock_modelserver_client
-    ) -> None:
-        """Second build of same corpus yields 0 new chunks (SC-003)."""
-        # Setup: client + watchlist + document
-        client = await make_client(async_session)
-        watchlist = await make_watchlist(async_session, client_id=client.id)
-        doc = await make_document(
-            async_session,
-            client_id=client.id,
-            source_name="pubmed",
-            source_payload="""<?xml version="1.0"?>
+_PUBMED_XML = """<?xml version="1.0"?>
 <PubmedArticle>
   <Article>
     <ArticleTitle>Test Article</ArticleTitle>
@@ -38,107 +21,102 @@ class TestIndexIdempotency:
       <AbstractText>Test abstract content.</AbstractText>
     </Abstract>
   </Article>
-</PubmedArticle>""",
+</PubmedArticle>"""
+
+
+@pytest.mark.asyncio
+class TestIndexIdempotency:
+    """Test that re-running a build produces 0 new chunks."""
+
+    async def _count_chunks(self, session_factory, client_id: int) -> int:
+        async with session_factory() as s:
+            return (
+                await s.execute(select(func.count(Chunk.id)).where(Chunk.client_id == client_id))
+            ).scalar() or 0
+
+    async def test_idempotent_build_no_new_chunks(
+        self, auth_app, make_client, make_watchlist, make_document, mock_modelserver_client
+    ) -> None:
+        """Second build of same corpus yields 0 new chunks (SC-003)."""
+        session_factory = auth_app.state.session_factory
+        client = await make_client()
+        watchlist = await make_watchlist(client_id=client.id)
+        await make_document(
+            client_id=client.id,
+            source_name="pubmed",
+            source_payload=_PUBMED_XML,
+            watchlist_id=watchlist.id,
         )
 
-        # Link document to watchlist
-        from app.ingestion.models import DocumentWatchlist
-
-        link = DocumentWatchlist(document_id=doc.id, watchlist_id=watchlist.id)
-        async_session.add(link)
-        await async_session.flush()
-
-        # First build
         run1 = await index_build_runner(
-            session_factory=lambda: async_session,
+            session_factory=session_factory,
             client_id=client.id,
             modelserver_client=mock_modelserver_client,
         )
-
-        # Count chunks after first build
-        stmt = select(func.count(Chunk.id)).where(Chunk.client_id == client.id)
-        chunks_after_first = (await async_session.execute(stmt)).scalar() or 0
-
+        chunks_after_first = await self._count_chunks(session_factory, client.id)
         assert chunks_after_first > 0, "First build should create chunks"
         assert run1.status in ("success", "partial_success")
 
-        # Second build (idempotent)
         run2 = await index_build_runner(
-            session_factory=lambda: async_session,
+            session_factory=session_factory,
             client_id=client.id,
             modelserver_client=mock_modelserver_client,
         )
+        chunks_after_second = await self._count_chunks(session_factory, client.id)
 
-        # Count chunks after second build
-        chunks_after_second = (await async_session.execute(stmt)).scalar() or 0
-
-        # Idempotency: same chunk count
         assert chunks_after_second == chunks_after_first, (
             f"Idempotent build should not create new chunks "
             f"(was {chunks_after_first}, now {chunks_after_second})"
         )
-
-        # Second run should skip all documents
+        # Idempotency is enforced at the query level: already-indexed documents are excluded
+        # from the work set, so the second run processes nothing and creates no chunks.
         assert (
             run2.documents_processed == 0
         ), f"Idempotent run should process 0 docs (processed {run2.documents_processed})"
-        assert (
-            run2.documents_skipped > 0
-        ), f"Idempotent run should skip indexed docs (skipped {run2.documents_skipped})"
+        assert run2.status == "success", f"Empty idempotent run should succeed (got {run2.status})"
 
     async def test_incremental_add_new_document(
-        self, async_session, mock_modelserver_client
+        self, auth_app, make_client, make_watchlist, make_document, mock_modelserver_client
     ) -> None:
         """Adding one document after initial build indexes only that document."""
-        from app.ingestion.models import DocumentWatchlist
+        session_factory = auth_app.state.session_factory
+        client = await make_client()
+        watchlist = await make_watchlist(client_id=client.id)
 
-        # Setup: initial build
-        client = await make_client(async_session)
-        watchlist = await make_watchlist(async_session, client_id=client.id)
+        await make_document(
+            client_id=client.id,
+            source_name="pubmed",
+            source_payload=_PUBMED_XML,
+            title="Doc 1",
+            watchlist_id=watchlist.id,
+        )
 
-        doc1 = await make_document(async_session, client_id=client.id, title="Doc 1")
-        link1 = DocumentWatchlist(document_id=doc1.id, watchlist_id=watchlist.id)
-        async_session.add(link1)
-        await async_session.flush()
-
-        # First build
         await index_build_runner(
-            session_factory=lambda: async_session,
+            session_factory=session_factory,
             client_id=client.id,
             modelserver_client=mock_modelserver_client,
         )
-        chunks_after_first = (
-            await async_session.execute(
-                select(func.count(Chunk.id)).where(Chunk.client_id == client.id)
-            )
-        ).scalar() or 0
+        chunks_after_first = await self._count_chunks(session_factory, client.id)
 
-        # Add a new document
-        doc2 = await make_document(async_session, client_id=client.id, title="Doc 2")
-        link2 = DocumentWatchlist(document_id=doc2.id, watchlist_id=watchlist.id)
-        async_session.add(link2)
-        await async_session.flush()
+        await make_document(
+            client_id=client.id,
+            source_name="pubmed",
+            source_payload=_PUBMED_XML,
+            title="Doc 2",
+            watchlist_id=watchlist.id,
+        )
 
-        # Second build (incremental)
         run2 = await index_build_runner(
-            session_factory=lambda: async_session,
+            session_factory=session_factory,
             client_id=client.id,
             modelserver_client=mock_modelserver_client,
         )
+        chunks_after_second = await self._count_chunks(session_factory, client.id)
 
-        chunks_after_second = (
-            await async_session.execute(
-                select(func.count(Chunk.id)).where(Chunk.client_id == client.id)
-            )
-        ).scalar() or 0
-
-        # Incremental: only the new document is processed
+        # Only the newly added document is in the work set; the already-indexed one is excluded.
         assert (
-            run2.documents_processed >= 1
-        ), f"Incremental run should process new doc (processed {run2.documents_processed})"
-        assert (
-            run2.documents_skipped >= 1
-        ), f"Incremental run should skip indexed doc (skipped {run2.documents_skipped})"
+            run2.documents_processed == 1
+        ), f"Incremental run should process only the new doc (processed {run2.documents_processed})"
         assert (
             chunks_after_second > chunks_after_first
         ), "Adding a document should increase chunk count"

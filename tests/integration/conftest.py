@@ -168,8 +168,17 @@ async def make_client(auth_app):
 
     if not created_ids:
         return
+    # Spec-6 embedding rows: chunks cascade on client delete, but index_build_runs has no
+    # ON DELETE CASCADE on client_id, so it must be removed before the client row.
+    from app.embedding.models import Chunk, DocumentIndexState, IndexBuildRun
+
     async with factory() as s:
         async with s.begin():
+            await s.execute(delete(Chunk).where(Chunk.client_id.in_(created_ids)))
+            await s.execute(
+                delete(DocumentIndexState).where(DocumentIndexState.client_id.in_(created_ids))
+            )
+            await s.execute(delete(IndexBuildRun).where(IndexBuildRun.client_id.in_(created_ids)))
             await s.execute(
                 delete(WatchlistBudgetUsage).where(WatchlistBudgetUsage.client_id.in_(created_ids))
             )
@@ -200,9 +209,8 @@ async def make_watchlist(auth_app):
                     client_id=client_id,
                     name=name,
                     is_active=is_active,
-                    cadence_days=7,
+                    cadence="weekly",
                     severity_threshold="serious",
-                    budget_documents=1000,
                 )
                 s.add(watchlist)
             await s.refresh(watchlist)
@@ -243,40 +251,52 @@ async def make_document(auth_app):
         source_payload: str | dict | None = None,
         title: str | None = None,
         published_at: datetime | None = None,
+        source_reliability: str = "peer_reviewed",
+        watchlist_id: int | None = None,
     ) -> Document:
+        # raw_payload is a JSONB column: a Python str round-trips as a JSON string scalar
+        # (what the XML parsers want); a dict round-trips as a JSON object (what FAERS wants).
         if source_payload is None:
-            source_payload = '{"test": "data"}'
-        if isinstance(source_payload, dict):
-            import json
-
-            source_payload = json.dumps(source_payload)
+            source_payload = {"test": "data"}
 
         title = title or f"Test Document {uuid.uuid4().hex[:8]}"
         published_at = published_at or datetime.now(UTC)
+        unique = uuid.uuid4().hex
 
         async with factory() as s:
             async with s.begin():
                 doc = Document(
                     client_id=client_id,
+                    normalized_external_id=f"test-{unique}",
+                    source_reliability=source_reliability,
                     title=title,
                     summary="Test summary",
-                    source=source_name,
-                    source_reliability="peer_reviewed",
                     published_at=published_at,
-                    deduplication_id=f"test-{uuid.uuid4().hex}",
                 )
                 s.add(doc)
                 await s.flush()
 
-                # Add source payload
                 ds = DocumentSource(
                     document_id=doc.id,
+                    client_id=client_id,
                     source=source_name,
+                    source_external_id=f"ext-{unique}",
+                    source_reliability=source_reliability,
                     raw_payload=source_payload,
                     fetched_at=datetime.now(UTC),
-                    is_primary=True,
                 )
                 s.add(ds)
+
+                # Optionally link the document to a watchlist (committed here so the
+                # runner's own sessions can see it — FR-020).
+                if watchlist_id is not None:
+                    s.add(
+                        DocumentWatchlist(
+                            document_id=doc.id,
+                            watchlist_id=watchlist_id,
+                            client_id=client_id,
+                        )
+                    )
                 await s.flush()
                 await s.refresh(doc)
 
@@ -337,7 +357,7 @@ async def mock_modelserver_client():
             """Return mock ready response."""
             return {"models": {"embedder": {"sha256": "test-model-sha256"}}}
 
-    return MockModelserverClient(base_url="http://test")
+    return MockModelserverClient(base_url="http://test", token="test-token")
 
 
 async def login_token(client: AsyncClient, email: str, password: str = "Abcdef1!") -> str:
