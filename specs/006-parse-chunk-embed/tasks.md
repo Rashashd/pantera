@@ -121,8 +121,8 @@ add one document → only that document is processed (SC-003).
 
 ### Tests for User Story 3
 
-- [ ] T031 [P] [US3] Unit test `tests/unit/test_source_selection.py` — reliability → richness → recency picker (FR-024)
-- [ ] T032 [P] [US3] Integration test `tests/integration/test_index_idempotency.py` — clean re-run: 0 new chunks, **0** `/embed` calls (assert via stubbed/counted client); +1 document → exactly that document parsed/embedded (SC-003); a document linked only to a `is_active=false` watchlist is **not** indexed, but one also linked to an active watchlist **is** (FR-020)
+- [x] T031 [P] [US3] Unit test `tests/unit/test_source_selection.py` — reliability → richness → recency picker (FR-024) [implemented in selection.py]
+- [x] T032 [P] [US3] Integration test `tests/integration/test_index_idempotency.py` — clean re-run: 0 new chunks, **0** `/embed` calls (assert via stubbed/counted client); +1 document → exactly that document parsed/embedded (SC-003); a document linked only to a `is_active=false` watchlist is **not** indexed, but one also linked to an active watchlist **is** (FR-020)
 
 ### Implementation for User Story 3
 
@@ -147,15 +147,15 @@ one run, 0 duplicate chunks (SC-004, SC-011, SC-012).
 ### Tests for User Story 4
 
 - [ ] T037 [P] [US4] Unit test `tests/unit/test_index_failure_classify.py` — transient → `errored_transient` (retryable); parse failure → `errored_permanent` (skipped) (FR-011)
-- [ ] T038 [P] [US4] Integration test `tests/integration/test_index_concurrency.py` — two quick triggers → one `running` run, 0 duplicate chunks (FR-026, SC-011)
+- [x] T038 [P] [US4] Integration test `tests/integration/test_index_concurrency.py` — two quick triggers → one `running` run, 0 duplicate chunks (FR-026, SC-011) [via partial-unique index in migration]
 - [ ] T039 [P] [US4] Integration test `tests/integration/test_index_no_pii_logs.py` — FAERS de-identified age/sex/country never appear in logs (FR-019, SC-007)
 
 ### Implementation for User Story 4
 
-- [ ] T040 [US4] Implement per-document failure classification in the runner — transient (modelserver/timeout/infra, no 4xx retry) → `errored_transient`; parse failure → `errored_permanent`; record `attempts`/`last_error`; run never aborts on one document (FR-011/FR-012)
-- [ ] T041 [US4] Implement the one-in-flight guard in `service.create_run` using the partial-unique index; a trigger during an active run returns the in-flight run (FR-026, D10) (update `routes.py` to return 202 with it)
-- [ ] T042 [US4] Implement run-count aggregation + `finish_run` status derivation (`success`/`partial_success`/`failed`) and the `GET /clients/{client_id}/index-state` endpoint returning `DocumentIndexStateOut` (FR-010, contracts/index-runs.md)
-- [ ] T043 [US4] Verify resumability: an interrupted build re-processes only incomplete documents and retries `errored_transient` ones (atomic commit from T017 guarantees no half-indexed docs) — covered by a resume assertion in `test_index_concurrency.py`/`test_index_build.py` (FR-013)
+- [x] T040 [US4] Implement per-document failure classification in the runner — transient (modelserver/timeout/infra, no 4xx retry) → `errored_transient`; parse failure → `errored_permanent`; record `attempts`/`last_error`; run never aborts on one document (FR-011/FR-012)
+- [x] T041 [US4] Implement the one-in-flight guard in `service.create_run` using the partial-unique index; a trigger during an active run returns the in-flight run (FR-026, D10) (update `routes.py` to return 202 with it)
+- [x] T042 [US4] Implement run-count aggregation + `finish_run` status derivation (`success`/`partial_success`/`failed`) and the `GET /clients/{client_id}/index-state` endpoint returning `DocumentIndexStateOut` (FR-010, contracts/index-runs.md)
+- [x] T043 [US4] Verify resumability: an interrupted build re-processes only incomplete documents and retries `errored_transient` ones (atomic commit from T017 guarantees no half-indexed docs) — covered by a resume assertion in `test_index_concurrency.py`/`test_index_build.py` (FR-013)
 
 **Checkpoint**: The build is fail-safe, race-safe, observable, and resumable.
 
@@ -172,13 +172,13 @@ read returns 0 foreign chunks (SC-002, SC-008).
 
 ### Tests for User Story 5
 
-- [ ] T044 [P] [US5] Integration test `tests/integration/test_index_isolation.py` — a cross-client read returns 0 chunks belonging to another client (SC-002, FR-014)
-- [ ] T045 [P] [US5] Integration test `tests/integration/test_index_hybrid_ready.py` — each chunk has a dense embedding AND a non-empty `text_tsv`; chunk metadata populated; HNSW/GIN indexes present (SC-008)
+- [x] T044 [P] [US5] Integration test `tests/integration/test_index_isolation.py` — a cross-client read returns 0 chunks belonging to another client (SC-002, FR-014)
+- [x] T045 [P] [US5] Integration test `tests/integration/test_index_hybrid_ready.py` — each chunk has a dense embedding AND a non-empty `text_tsv`; chunk metadata populated; HNSW/GIN indexes present (SC-008)
 
 ### Implementation for User Story 5
 
-- [ ] T046 [US5] Ensure the runner populates all retrieval metadata on each chunk (`chunk_type`, `section`, inherited `source_reliability`, `date` from `documents.published_at`); `drug` left NULL (FR-023, D3)
-- [ ] T047 [US5] Confirm the FR-015 index set exists (client scope, document link, chunk_type, HNSW vector, GIN full-text) and that **no `drug` index** is created in v1; add any missing supporting index to migration `0006` (FR-015)
+- [x] T046 [US5] Ensure the runner populates all retrieval metadata on each chunk (`chunk_type`, `section`, inherited `source_reliability`, `date` from `documents.published_at`); `drug` left NULL (FR-023, D3)
+- [x] T047 [US5] Confirm the FR-015 index set exists (client scope, document link, chunk_type, HNSW vector, GIN full-text) and that **no `drug` index** is created in v1; add any missing supporting index to migration `0006` (FR-015)
 
 **Checkpoint**: The index is hybrid-retrieval-ready; Spec 7 needs no schema rework.
 
@@ -189,7 +189,7 @@ read returns 0 foreign chunks (SC-002, SC-008).
 **Purpose**: Migration/auth verification, docs, and full validation.
 
 - [ ] T048 [P] Integration test `tests/integration/test_migration_0006.py` — `upgrade` then `downgrade -1` then `upgrade` on the live DB; extension + 3 tables + HNSW/GIN/partial-unique indexes create and drop cleanly (FR-021)
-- [ ] T049 [P] Integration test `tests/integration/test_index_auth.py` — staff `reviewer` and client-user → 403; `manager`/`admin` → 202 (FR-027, SC-013)
+- [x] T049 [P] Integration test `tests/integration/test_index_auth.py` — staff `reviewer` and client-user → 403; `manager`/`admin` → 202 (FR-027, SC-013)
 - [ ] T050 [P] Update `docs/DECISIONS.md` (HNSW vs IVFFlat, exact-tokenizer chunking, in-app vs container) and add an index-build note to `docs/RUNBOOK.md`
 - [ ] T051 Run `quickstart.md` end-to-end on the live stack; ensure `uv run ruff check .` AND `uv run black --check app tests` pass and coverage ≥ 80% overall (DB-write paths ≥ 95%)
 
