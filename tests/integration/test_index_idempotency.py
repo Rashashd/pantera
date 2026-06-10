@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 
 from app.embedding.models import Chunk, IndexBuildRun
 from app.embedding.runner import index_build_runner
-from tests.conftest import make_client, make_document, make_watchlist
+from tests.integration.conftest import make_client, make_document, make_watchlist
 
 pytestmark = pytest.mark.skipif(
     not os.getenv("PANTERA_INTEGRATION"),

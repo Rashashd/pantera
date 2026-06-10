@@ -5,7 +5,7 @@ import os
 import pytest
 from httpx import AsyncClient
 
-from tests.conftest import login_token
+from tests.integration.conftest import login_token
 
 pytestmark = pytest.mark.skipif(
     not os.getenv("PANTERA_INTEGRATION"),

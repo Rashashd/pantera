@@ -121,8 +121,57 @@ This is idempotent and safe for re-runs.
 - `uv run pytest` — runs unit + stack-free tests.
 - `PANTERA_INTEGRATION=1 uv run pytest` — also runs tests that require the live stack.
 
+## Index Build — RAG Substrate (spec 6)
+
+Once documents are ingested, build a searchable index for hybrid retrieval (dense + lexical).
+
+### Trigger an index build
+
+**Prerequisites**: At least one document must be ingested for the client (spec 4).
+
+```bash
+# Get a manager/admin token
+TOKEN=$(curl -s -X POST http://localhost:8000/auth/jwt/login \
+  -F "username=admin@pantera.io" -F "password=ChangeMe1!" | jq -r .access_token)
+
+# Trigger the build (returns 202 Accepted, runs in the background)
+curl -X POST http://localhost:8000/clients/<client_id>/index \
+  -H "Authorization: Bearer $TOKEN"
+
+# Monitor the build
+curl http://localhost:8000/clients/<client_id>/index-runs \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Index build details
+
+- **What it does**: Parses all documents for the client by source type → chunks them to ~256
+  tokens → embeds via the modelserver → persists with dense + lexical vectors.
+- **Who can trigger**: Manager or admin staff. Reviewer and client-user get 403.
+- **Concurrency**: At most one build per client at a time; concurrent triggers join the
+  in-flight run (202 response, no duplicates).
+- **Idempotency**: Already-indexed documents are skipped. Re-running the same corpus yields
+  0 new chunks.
+- **Incremental**: Adding new documents causes only those docs to be processed on the next run.
+- **Watchlist filtering**: Documents linked only to inactive watchlists are excluded.
+- **Failure handling**: Permanent parse errors are logged and skipped. Transient failures
+  (modelserver down, timeout) are retried on the next run.
+- **Monitoring**: Check `GET /index-runs` for status; `GET /index-state` for per-document progress.
+
+### Storage
+
+Chunks are stored in the `chunks` table with:
+- Dense 768-dim L2-normalized embedding (vectors, cosine search via HNSW index)
+- Lexical tsvector (full-text search via GIN index)
+- Metadata: chunk_type, section, source_reliability, date (from document), document_id, ordinal
+- Per-document state: status, chunk_count, embedder_version, attempts, last_error (in
+  `document_index_state`)
+
 ## Troubleshooting
 
 - "Cannot reach Vault" → ensure the `vault` container is healthy and secrets were written.
 - "Required secret(s) missing" → re-run `scripts/write_secrets.py` with the needed env vars.
 - 429 on PubMed/openFDA → add the optional API keys to Vault (see Ingestion section above).
+- Build fails with "Embedder version mismatch" → modelserver is running a different artifact.
+  Ensure both the app and modelserver use the same embedder artifact (SHA-256 mismatch is
+  detected at build start and fails fast).

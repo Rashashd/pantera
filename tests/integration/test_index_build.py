@@ -5,11 +5,11 @@ import os
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clients.models import Client
+from app.clients.models import Client, Watchlist
 from app.embedding.models import Chunk, DocumentIndexState, IndexBuildRun
 from app.embedding.runner import index_build_runner
-from app.ingestion.models import Document, DocumentSource, Watchlist, DocumentWatchlist
-from tests.conftest import make_client, make_document, make_watchlist
+from app.ingestion.models import Document, DocumentSource, DocumentWatchlist
+from tests.integration.conftest import make_client, make_document, make_watchlist
 
 pytestmark = pytest.mark.skipif(
     not os.getenv("PANTERA_INTEGRATION"),

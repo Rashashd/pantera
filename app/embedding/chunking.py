@@ -134,6 +134,12 @@ class Chunker:
                 # Remove the leading overlap portion from display
                 if len(overlap_buffer) > 0 and chunk_text.startswith(overlap_buffer):
                     chunk_text = chunk_text[len(overlap_buffer) :]
+                    # After string slicing, re-verify token count to handle token boundary misalignment
+                    while self.tokenizer.count_tokens(chunk_text) > self.max_tokens and chunk_text:
+                        # Trim back to fit within max_tokens
+                        chunk_text, _ = self._split_at_token_boundary(
+                            chunk_text, max_tokens=self.max_tokens
+                        )
 
             result.append(
                 ParsedChunk(
