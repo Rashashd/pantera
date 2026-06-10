@@ -22,7 +22,7 @@ _DOC_INDEX_STATUS_CHECK = (
 )
 _RUN_STATUS_CHECK = "status IN ('running','success','partial_success','failed')"
 _SOURCE_RELIABILITY_CHECK = (
-    "source_reliability IN ('pubmed','europepmc','openfda','fda_medwatch','ema','mhra','regulatory_alert')"
+    "source_reliability IN ('regulatory_alert','peer_reviewed','preprint','case_report')"
 )
 
 
@@ -67,7 +67,9 @@ def upgrade() -> None:
 
     op.create_index("ix_chunks_client_id", "chunks", ["client_id"], unique=False)
     op.create_index("ix_chunks_document_id", "chunks", ["document_id"], unique=False)
-    op.create_index("ix_chunks_client_chunk_type", "chunks", ["client_id", "chunk_type"], unique=False)
+    op.create_index(
+        "ix_chunks_client_chunk_type", "chunks", ["client_id", "chunk_type"], unique=False
+    )
     op.create_index(
         "ix_chunks_text_tsv",
         "chunks",

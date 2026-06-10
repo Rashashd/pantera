@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,7 +38,6 @@ async def index_build_runner(
     Returns:
         The completed IndexBuildRun with status and counts.
     """
-    session = session_factory()
     settings = get_settings()
 
     # Initialize tokenizer and chunker
@@ -55,15 +54,15 @@ async def index_build_runner(
         max_tokens=settings.chunk_max_tokens,
     )
 
-    # Initialize modelserver client if not provided
-    if modelserver_client is None:
-        modelserver_client = ModelserverClient.from_settings(settings)
-
     # Create the run (or get in-flight run if one exists — FR-026)
-    run = await IndexBuildService.create_run(session, client_id, triggered_by_user_id)
+    async with session_factory() as session:
+        async with session.begin():
+            run = await IndexBuildService.create_run(session, client_id, triggered_by_user_id)
+            run_id = run.id
+
     logger.info(
         "Index build run started",
-        extra={"client_id": client_id, "run_id": run.id},
+        extra={"client_id": client_id, "run_id": run_id},
     )
 
     try:
@@ -75,93 +74,119 @@ async def index_build_runner(
                 )
             except Exception as e:
                 logger.error(f"Embedder version mismatch: {e}")
-                run.status = IndexBuildRunStatus.FAILED
-                await IndexBuildService.finish_run(session, run.id, run.status)
-                await session.commit()
+                async with session_factory() as session:
+                    async with session.begin():
+                        await IndexBuildService.finish_run(
+                            session, run_id, IndexBuildRunStatus.FAILED
+                        )
                 return run
 
         # Get documents to index for this client (not_indexed / errored_transient + active watchlist)
-        documents = await IndexBuildService.get_documents_to_index(session, client_id)
+        async with session_factory() as session:
+            documents = await IndexBuildService.get_documents_to_index(session, client_id)
+
         logger.info(
             f"Found {len(documents)} documents to index",
-            extra={"client_id": client_id, "run_id": run.id},
+            extra={"client_id": client_id, "run_id": run_id},
         )
 
-        # Process each document and update run counters
+        # Track counters across document processing
+        documents_processed = 0
+        documents_errored = 0
+        documents_skipped = 0
+        chunks_created = 0
+
+        # Process each document with per-document atomicity
         for document in documents:
-            await _process_document(
-                session,
-                run,
+            success, doc_chunks = await _process_document(
+                session_factory,
+                run_id,
                 document,
                 tokenizer,
                 chunker,
                 modelserver_client,
                 client_id,
             )
+            if success is None:
+                documents_skipped += 1
+            elif success:
+                documents_processed += 1
+                chunks_created += doc_chunks
+            else:
+                documents_errored += 1
 
-        # Persist run counters
-        await session.flush()
+        # Update run with final counters and status
+        async with session_factory() as session:
+            async with session.begin():
+                await IndexBuildService.finish_run(session, run_id)
+                # Refresh run object with final status
+                from sqlalchemy import select
+                fresh_run = await session.execute(
+                    select(IndexBuildRun).where(IndexBuildRun.id == run_id)
+                )
+                run = fresh_run.scalar_one()
 
-        # Finalize run status (service derives it from counters)
-        await IndexBuildService.finish_run(session, run.id)
         logger.info(
             "Index build run finished",
             extra={
                 "client_id": client_id,
-                "run_id": run.id,
+                "run_id": run_id,
                 "status": run.status,
-                "documents_processed": run.documents_processed,
-                "chunks_created": run.chunks_created,
+                "documents_processed": documents_processed,
+                "documents_errored": documents_errored,
+                "documents_skipped": documents_skipped,
+                "chunks_created": chunks_created,
             },
         )
 
     except Exception as e:
         logger.error(f"Unexpected error during index build: {e}", exc_info=True)
-        await IndexBuildService.finish_run(session, run.id, IndexBuildRunStatus.FAILED)
-
-    finally:
-        await session.commit()
-        await session.close()
+        async with session_factory() as session:
+            async with session.begin():
+                await IndexBuildService.finish_run(session, run_id, IndexBuildRunStatus.FAILED)
 
     return run
 
 
 async def _process_document(
-    session: AsyncSession,
-    run: IndexBuildRun,
+    session_factory: Callable[[], AsyncSession],
+    run_id: int,
     document: Any,
     tokenizer: EmbedderTokenizer,
     chunker: Chunker,
     modelserver_client: ModelserverClient,
     client_id: int,
-) -> None:
-    """Process a single document: parse → chunk → embed → persist (atomic, FR-028).
+) -> tuple[bool | None, int]:
+    """Process a single document: parse → chunk → embed → persist (atomic per-doc, FR-028).
 
     Args:
-        session: Database session.
-        run: The index build run being executed.
+        session_factory: Callable that returns an AsyncSession.
+        run_id: The index build run ID.
         document: The Document ORM object.
         tokenizer: Tokenizer for token counting.
         chunker: Chunker for splitting text.
         modelserver_client: Client for embedding requests.
         client_id: Tenant client ID.
+
+    Returns:
+        (success, chunk_count) where success is True/False/None (skipped).
     """
-    extra_log = {"client_id": client_id, "document_id": document.id, "run_id": run.id}
+    extra_log = {"client_id": client_id, "document_id": document.id, "run_id": run_id}
 
-    # Get or create the index state
-    index_state = await IndexBuildService.get_or_create_index_state(
-        session, document.id, client_id
-    )
+    # Check if document should be skipped (check state outside transaction first)
+    async with session_factory() as session:
+        index_state = await IndexBuildService.get_or_create_index_state(
+            session, document.id, client_id
+        )
+        should_skip = index_state.status in (
+            DocumentIndexStatus.INDEXED,
+            DocumentIndexStatus.INDEXED_EMPTY,
+            DocumentIndexStatus.ERRORED_PERMANENT,
+        )
 
-    # Skip already-indexed documents (idempotency)
-    if index_state.status in (
-        DocumentIndexStatus.INDEXED,
-        DocumentIndexStatus.INDEXED_EMPTY,
-        DocumentIndexStatus.ERRORED_PERMANENT,
-    ):
-        run.documents_skipped += 1
+    if should_skip:
         logger.info("Skipping document (already processed)", extra=extra_log)
-        return
+        return (None, 0)
 
     # Select the best source payload (FR-024)
     from app.embedding.selection import select_source
@@ -174,14 +199,17 @@ async def _process_document(
             f"No valid source for document {document.id}: {e}",
             extra={**extra_log, "transient": False},
         )
-        index_state.status = DocumentIndexStatus.ERRORED_PERMANENT
-        index_state.attempts += 1
-        index_state.last_error = str(e)[:255]
-        index_state.updated_at = datetime.utcnow()
-        index_state.last_run_id = run.id
-        run.documents_errored += 1
-        await session.flush()
-        return
+        async with session_factory() as session:
+            async with session.begin():
+                index_state = await IndexBuildService.get_or_create_index_state(
+                    session, document.id, client_id
+                )
+                index_state.status = DocumentIndexStatus.ERRORED_PERMANENT
+                index_state.attempts += 1
+                index_state.last_error = str(e)[:255]
+                index_state.updated_at = datetime.now(timezone.utc)
+                index_state.last_run_id = run_id
+        return (False, 0)
 
     raw_payload = selected_source.raw_payload
 
@@ -200,28 +228,37 @@ async def _process_document(
             f"Parse error for document {document.id}: {e}",
             extra={"client_id": client_id, "document_id": document.id, "transient": e.is_transient},
         )
-        index_state.status = status
-        index_state.attempts += 1
-        index_state.last_error = str(e)[:255]  # Truncate for DB
-        index_state.last_run_id = run.id
-        index_state.updated_at = datetime.utcnow()
-        run.documents_errored += 1
-        await session.flush()
-        return
+        async with session_factory() as session:
+            async with session.begin():
+                index_state = await IndexBuildService.get_or_create_index_state(
+                    session, document.id, client_id
+                )
+                index_state.status = status
+                index_state.attempts += 1
+                index_state.last_error = str(e)[:255]
+                index_state.last_run_id = run_id
+                index_state.updated_at = datetime.now(timezone.utc)
+        return (False, 0)
 
     if not parsed_chunks:
         # Document parsed but yielded no chunks
-        index_state.status = DocumentIndexStatus.INDEXED_EMPTY
-        index_state.chunk_count = 0
-        index_state.embedder_version = (
-            (await modelserver_client.get_ready()).get("models", {}).get("embedder", {}).get("sha256")
-        )
-        index_state.attempts += 1
-        index_state.last_run_id = run.id
-        index_state.updated_at = datetime.utcnow()
-        run.documents_processed += 1
-        await session.flush()
-        return
+        async with session_factory() as session:
+            async with session.begin():
+                index_state = await IndexBuildService.get_or_create_index_state(
+                    session, document.id, client_id
+                )
+                index_state.status = DocumentIndexStatus.INDEXED_EMPTY
+                index_state.chunk_count = 0
+                index_state.embedder_version = (
+                    (await modelserver_client.get_ready())
+                    .get("models", {})
+                    .get("embedder", {})
+                    .get("sha256")
+                )
+                index_state.attempts += 1
+                index_state.last_run_id = run_id
+                index_state.updated_at = datetime.now(timezone.utc)
+        return (True, 0)
 
     # Chunk the parsed content
     chunked = chunker.chunk(parsed_chunks)
@@ -237,30 +274,34 @@ async def _process_document(
             f"Embedding failed for document {document.id}: {e}",
             extra={"client_id": client_id, "document_id": document.id, "transient": True},
         )
-        index_state.status = DocumentIndexStatus.ERRORED_TRANSIENT
-        index_state.attempts += 1
-        index_state.last_error = f"Embedding failed: {str(e)[:200]}"
-        index_state.last_run_id = run.id
-        index_state.updated_at = datetime.utcnow()
-        run.documents_errored += 1
-        await session.flush()
-        return
+        async with session_factory() as session:
+            async with session.begin():
+                index_state = await IndexBuildService.get_or_create_index_state(
+                    session, document.id, client_id
+                )
+                index_state.status = DocumentIndexStatus.ERRORED_TRANSIENT
+                index_state.attempts += 1
+                index_state.last_error = f"Embedding failed: {str(e)[:200]}"
+                index_state.last_run_id = run_id
+                index_state.updated_at = datetime.now(timezone.utc)
+        return (False, 0)
 
-    # Build Chunk ORM objects and persist in atomic transaction
+    # Build Chunk ORM objects and persist with per-document atomicity
     try:
         chunk_rows = []
         embedder_version = None
 
-        for i, (chunked_obj, embedding_result) in enumerate(zip(chunked, embeddings)):
+        for chunked_obj, embedding_result in zip(chunked, embeddings):
             # Extract embedding and version from result dict
             embedding_vector = embedding_result.get("embedding")
             model_version = embedding_result.get("model_version", {})
-            embedder_version = model_version.get("sha256", "unknown")
+            embedder_version = model_version.get("sha256")
 
             # Validate embedding dimension (FR-016)
             if not isinstance(embedding_vector, list) or len(embedding_vector) != 768:
                 raise ValueError(
-                    f"Invalid embedding dimension: expected 768, got {len(embedding_vector) if isinstance(embedding_vector, list) else 'not a list'}"
+                    f"Invalid embedding dimension: expected 768, "
+                    f"got {len(embedding_vector) if isinstance(embedding_vector, list) else 'not a list'}"
                 )
 
             chunk = Chunk(
@@ -274,39 +315,42 @@ async def _process_document(
                 source_reliability=document.source_reliability,
                 text=chunked_obj.text,
                 embedding=embedding_vector,
-                embedder_version=embedder_version,
+                embedder_version=embedder_version or "unknown",
             )
             chunk_rows.append(chunk)
 
-        # Persist chunks (idempotency guard via unique constraint)
-        await IndexBuildService.insert_chunks(session, chunk_rows)
+        # Persist chunks and state in one per-document transaction
+        async with session_factory() as session:
+            async with session.begin():
+                await IndexBuildService.insert_chunks(session, chunk_rows)
+                index_state = await IndexBuildService.get_or_create_index_state(
+                    session, document.id, client_id
+                )
+                index_state.status = DocumentIndexStatus.INDEXED
+                index_state.chunk_count = len(chunk_rows)
+                index_state.embedder_version = embedder_version
+                index_state.attempts += 1
+                index_state.last_error = None
+                index_state.last_run_id = run_id
+                index_state.updated_at = datetime.now(timezone.utc)
 
-        # Atomically update state (same transaction as chunks)
-        index_state.status = DocumentIndexStatus.INDEXED
-        index_state.chunk_count = len(chunk_rows)
-        index_state.embedder_version = embedder_version
-        index_state.attempts += 1
-        index_state.last_error = None
-        index_state.last_run_id = run.id
-        index_state.updated_at = datetime.utcnow()
-
-        # Update run counters
-        run.documents_processed += 1
-        run.chunks_created += len(chunk_rows)
-
-        await session.flush()
         logger.info(
             f"Document indexed: {len(chunk_rows)} chunks",
             extra={"client_id": client_id, "document_id": document.id},
         )
+        return (True, len(chunk_rows))
 
     except Exception as e:
         logger.error(f"Failed to persist chunks for document {document.id}: {e}", exc_info=True)
-        index_state.status = DocumentIndexStatus.ERRORED_TRANSIENT
-        index_state.attempts += 1
-        index_state.last_error = f"Persistence failed: {str(e)[:200]}"
-        index_state.last_run_id = run.id
-        index_state.updated_at = datetime.utcnow()
-        run.documents_errored += 1
-        await session.flush()
+        async with session_factory() as session:
+            async with session.begin():
+                index_state = await IndexBuildService.get_or_create_index_state(
+                    session, document.id, client_id
+                )
+                index_state.status = DocumentIndexStatus.ERRORED_TRANSIENT
+                index_state.attempts += 1
+                index_state.last_error = f"Persistence failed: {str(e)[:200]}"
+                index_state.last_run_id = run_id
+                index_state.updated_at = datetime.now(timezone.utc)
+        return (False, 0)
 

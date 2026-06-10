@@ -1,5 +1,6 @@
 """Source selection logic for multi-source documents."""
 
+import json
 from app.ingestion.enums import SourceReliability
 
 
@@ -22,12 +23,21 @@ def select_source(document_sources: list) -> object:
 
     # Sort by: reliability rank (desc), payload length (desc), fetched_at (desc)
     def sort_key(ds):  # type: ignore
+        # Use document's reliability tier, not source name
         try:
-            reliability_rank = SourceReliability(ds.source).rank
-        except ValueError:
+            reliability_rank = SourceReliability(ds.document.source_reliability).rank
+        except (ValueError, AttributeError):
             reliability_rank = -1
 
-        payload_length = len(ds.raw_payload) if ds.raw_payload else 0
+        # Richness: serialized payload length
+        if ds.raw_payload:
+            if isinstance(ds.raw_payload, dict):
+                payload_length = len(json.dumps(ds.raw_payload))
+            else:
+                payload_length = len(ds.raw_payload)
+        else:
+            payload_length = 0
+
         fetched_at_timestamp = ds.fetched_at.timestamp() if ds.fetched_at else 0
 
         # Return tuple for descending sort on all three

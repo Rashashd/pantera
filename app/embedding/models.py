@@ -18,7 +18,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.embedding.enums import (
-    ChunkType,
     DocumentIndexStatus,
     IndexBuildRunStatus,
 )
@@ -112,7 +111,7 @@ class DocumentIndexState(Base):
 
 
 class IndexBuildRun(Base):
-    """One index-build invocation for a client; observability + one-in-flight guard (FR-010/FR-026)."""
+    """Index-build run: observability + one-in-flight guard (FR-010/FR-026)."""
 
     __tablename__ = "index_build_runs"
 

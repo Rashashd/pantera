@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import structlog
+from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_acting_client, get_acting_client_read, require_admin
@@ -42,6 +43,7 @@ async def trigger_index_build(
     settings = request.app.state.settings
     dispatcher = request.app.state.dispatcher
 
+    is_new_run = False
     async with session_factory() as session:
         async with session.begin():
             # Create or get in-flight run (FR-026: one per client at a time)
@@ -50,6 +52,11 @@ async def trigger_index_build(
                 client_id=target.id,
                 triggered_by_user_id=admin.id,
             )
+
+            # Check if this is a newly created run or existing in-flight run
+            is_new_run = run.started_at and (
+                datetime.now(timezone.utc) - run.started_at
+            ).total_seconds() < 2  # Heuristic: created within last 2 seconds
 
             # Dispatch event for audit (Constitution V: human actor tracked)
             await dispatcher.dispatch(
@@ -64,14 +71,15 @@ async def trigger_index_build(
 
             run_id = run.id
 
-    # Schedule runner in background AFTER session commit (BG-task/session-timing pattern)
-    background_tasks.add_task(
-        _run_index_build_background,
-        session_factory=session_factory,
-        client_id=target.id,
-        run_id=run_id,
-        settings=settings,
-    )
+    # Schedule runner in background ONLY for new runs (H3 fix)
+    if is_new_run:
+        background_tasks.add_task(
+            _run_index_build_background,
+            session_factory=session_factory,
+            client_id=target.id,
+            run_id=run_id,
+            settings=settings,
+        )
 
     return IndexBuildRunOut.model_validate(run)
 
@@ -84,12 +92,12 @@ async def _run_index_build_background(
 ) -> None:
     """Background task runner (decoupled from request cycle)."""
     try:
-        modelserver_client = ModelserverClient.from_settings(settings)
-        await index_build_runner(
-            session_factory=session_factory,
-            client_id=client_id,
-            modelserver_client=modelserver_client,
-        )
+        async with ModelserverClient.from_settings(settings) as modelserver_client:
+            await index_build_runner(
+                session_factory=session_factory,
+                client_id=client_id,
+                modelserver_client=modelserver_client,
+            )
     except Exception as e:
         _log.error(
             "Index build background task failed",

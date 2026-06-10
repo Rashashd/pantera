@@ -34,10 +34,10 @@ class Chunker:
         self.max_tokens = max_tokens
 
     def chunk(self, chunks: list[ParsedChunk]) -> list[ParsedChunk]:
-        """Apply chunking to a list of parsed chunks (respects section boundaries and structural types).
+        """Apply chunking to parsed chunks (respects section boundaries and structural types).
 
         Structural chunks (table, figure_caption) are exempt from overlap.
-        Chunks oversized relative to max_tokens are recursively split at token boundaries.
+        Oversized chunks are split at token boundaries.
 
         Args:
             chunks: List of ParsedChunk from a parser.
@@ -134,9 +134,8 @@ class Chunker:
                 # Remove the leading overlap portion from display
                 if len(overlap_buffer) > 0 and chunk_text.startswith(overlap_buffer):
                     chunk_text = chunk_text[len(overlap_buffer) :]
-                    # After string slicing, re-verify token count to handle token boundary misalignment
+                    # Re-verify after string slicing (token boundaries don't match char boundaries)
                     while self.tokenizer.count_tokens(chunk_text) > self.max_tokens and chunk_text:
-                        # Trim back to fit within max_tokens
                         chunk_text, _ = self._split_at_token_boundary(
                             chunk_text, max_tokens=self.max_tokens
                         )

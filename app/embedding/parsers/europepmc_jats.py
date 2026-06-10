@@ -1,8 +1,5 @@
 """Europe PMC JATS XML parser."""
 
-from lxml import etree  # type: ignore
-
-from app.embedding.enums import ChunkType
 from app.embedding.parsers.base import ParsedChunk
 
 
