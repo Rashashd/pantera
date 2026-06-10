@@ -1,11 +1,11 @@
 """Index build runner: orchestrates parse, chunk, embed, persist."""
 
 import asyncio
-import logging
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -18,7 +18,7 @@ from app.embedding.tokenizer import EmbedderTokenizer
 from app.infra.modelserver_client import ModelserverClient
 from app.ingestion.enums import SourceName
 
-logger = logging.getLogger(__name__)
+_log = structlog.get_logger(__name__)
 
 
 async def index_build_runner(
@@ -44,7 +44,7 @@ async def index_build_runner(
     try:
         tokenizer = EmbedderTokenizer(tokenizer_path=settings.embedder_tokenizer_path)
     except Exception as e:
-        logger.error(f"Failed to load tokenizer: {e}")
+        _log.error("failed to load tokenizer", error=str(e), exc_info=True)
         raise
 
     chunker = Chunker(
@@ -60,10 +60,7 @@ async def index_build_runner(
             run = await IndexBuildService.create_run(session, client_id, triggered_by_user_id)
             run_id = run.id
 
-    logger.info(
-        "Index build run started",
-        extra={"client_id": client_id, "run_id": run_id},
-    )
+    _log.info("index build run started", client_id=client_id, run_id=run_id)
 
     try:
         # Verify embedder version at startup (FR-025)
@@ -73,7 +70,7 @@ async def index_build_runner(
                     modelserver_client, settings.embedder_model_version
                 )
             except Exception as e:
-                logger.error(f"Embedder version mismatch: {e}")
+                _log.error("embedder version mismatch", error=str(e), exc_info=True)
                 async with session_factory() as session:
                     async with session.begin():
                         await IndexBuildService.finish_run(
@@ -85,9 +82,11 @@ async def index_build_runner(
         async with session_factory() as session:
             documents = await IndexBuildService.get_documents_to_index(session, client_id)
 
-        logger.info(
-            f"Found {len(documents)} documents to index",
-            extra={"client_id": client_id, "run_id": run_id},
+        _log.info(
+            "documents to index",
+            client_id=client_id,
+            run_id=run_id,
+            document_count=len(documents),
         )
 
         # Track counters across document processing
@@ -126,21 +125,19 @@ async def index_build_runner(
                 )
                 run = fresh_run.scalar_one()
 
-        logger.info(
-            "Index build run finished",
-            extra={
-                "client_id": client_id,
-                "run_id": run_id,
-                "status": run.status,
-                "documents_processed": documents_processed,
-                "documents_errored": documents_errored,
-                "documents_skipped": documents_skipped,
-                "chunks_created": chunks_created,
-            },
+        _log.info(
+            "index build run finished",
+            client_id=client_id,
+            run_id=run_id,
+            status=run.status,
+            documents_processed=documents_processed,
+            documents_errored=documents_errored,
+            documents_skipped=documents_skipped,
+            chunks_created=chunks_created,
         )
 
     except Exception as e:
-        logger.error(f"Unexpected error during index build: {e}", exc_info=True)
+        _log.error("unexpected error during index build", error=str(e), exc_info=True)
         async with session_factory() as session:
             async with session.begin():
                 await IndexBuildService.finish_run(session, run_id, IndexBuildRunStatus.FAILED)
@@ -185,7 +182,7 @@ async def _process_document(
         )
 
     if should_skip:
-        logger.info("Skipping document (already processed)", extra=extra_log)
+        _log.info("skipping document already processed", client_id=client_id, document_id=document.id, run_id=run_id)
         return (None, 0)
 
     # Select the best source payload (FR-024)
@@ -195,9 +192,13 @@ async def _process_document(
         selected_source = select_source(document.document_sources)
     except ValueError as e:
         # Permanent failure: no valid source available
-        logger.warning(
-            f"No valid source for document {document.id}: {e}",
-            extra={**extra_log, "transient": False},
+        _log.warning(
+            "no valid source for document",
+            client_id=client_id,
+            document_id=document.id,
+            run_id=run_id,
+            error=str(e),
+            transient=False,
         )
         async with session_factory() as session:
             async with session.begin():
@@ -224,9 +225,13 @@ async def _process_document(
             if e.is_transient
             else DocumentIndexStatus.ERRORED_PERMANENT
         )
-        logger.warning(
-            f"Parse error for document {document.id}: {e}",
-            extra={"client_id": client_id, "document_id": document.id, "transient": e.is_transient},
+        _log.warning(
+            "parse error for document",
+            client_id=client_id,
+            document_id=document.id,
+            run_id=run_id,
+            error=str(e),
+            transient=e.is_transient,
         )
         async with session_factory() as session:
             async with session.begin():
@@ -270,9 +275,13 @@ async def _process_document(
     try:
         embeddings = await modelserver_client.embed_chunked(chunk_texts)
     except Exception as e:
-        logger.warning(
-            f"Embedding failed for document {document.id}: {e}",
-            extra={"client_id": client_id, "document_id": document.id, "transient": True},
+        _log.warning(
+            "embedding failed for document",
+            client_id=client_id,
+            document_id=document.id,
+            run_id=run_id,
+            error=str(e),
+            transient=True,
         )
         async with session_factory() as session:
             async with session.begin():
@@ -334,14 +343,17 @@ async def _process_document(
                 index_state.last_run_id = run_id
                 index_state.updated_at = datetime.now(timezone.utc)
 
-        logger.info(
-            f"Document indexed: {len(chunk_rows)} chunks",
-            extra={"client_id": client_id, "document_id": document.id},
+        _log.info(
+            "document indexed",
+            client_id=client_id,
+            document_id=document.id,
+            run_id=run_id,
+            chunk_count=len(chunk_rows),
         )
         return (True, len(chunk_rows))
 
     except Exception as e:
-        logger.error(f"Failed to persist chunks for document {document.id}: {e}", exc_info=True)
+        _log.error("failed to persist chunks for document", client_id=client_id, document_id=document.id, run_id=run_id, error=str(e), exc_info=True)
         async with session_factory() as session:
             async with session.begin():
                 index_state = await IndexBuildService.get_or_create_index_state(

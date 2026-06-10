@@ -170,15 +170,25 @@ class Chunker:
         limited_ids = tokens.ids[:max_tokens]
         chunk_text = self.tokenizer.tokenizer.decode(limited_ids, skip_special_tokens=True)
 
-        # Find where this chunk ends in the original text
-        # (approximation: look for the last sentence boundary within the token limit)
-        match = re.search(r"[.!?]\s", chunk_text)
-        if match:
-            split_pos = match.end()
-            return chunk_text[:split_pos], text[len(chunk_text[:split_pos]) :].strip()
+        # Find the last sentence boundary within the chunk
+        last_match = None
+        for match in re.finditer(r"[.!?]\s", chunk_text):
+            last_match = match
+
+        if last_match:
+            # Split at last sentence boundary
+            split_pos = last_match.end()
+            return chunk_text[:split_pos], text[split_pos:].strip()
         else:
-            # No sentence boundary; use token boundary as-is
-            return chunk_text, text[len(chunk_text) :].strip()
+            # No sentence boundary; return the decoded chunk and remaining original text
+            # Find approximately where the decoded text ends in the original (best effort)
+            # by looking for the last few words of chunk_text in the original
+            chunk_tokens_count = len(limited_ids)
+            remaining_tokens = tokens.ids[chunk_tokens_count:]
+            remaining_text = self.tokenizer.tokenizer.decode(
+                remaining_tokens, skip_special_tokens=True
+            )
+            return chunk_text, remaining_text.strip()
 
     def _get_overlap_suffix(self, chunk_text: str, overlap_tokens: int | None = None) -> str:
         """Extract a suffix of the chunk for overlap into the next chunk."""

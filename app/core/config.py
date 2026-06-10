@@ -49,7 +49,7 @@ class Settings(BaseSettings):
 
     # --- Embedding: RAG index configuration (spec 6) ---
     embedder_tokenizer_path: str = "modelserver/models/tokenizer.json"  # tokenizer.json path
-    embedder_model_version: str = ""  # pinned embedder SHA-256; from Vault or empty for auto
+    embedder_model_version: str = ""  # pinned embedder SHA-256; from Vault (M3: fail-fast)
     chunk_target_tokens: int = 256  # target chunk size in tokens (approximate)
     chunk_overlap_ratio: float = 0.15  # overlap as fraction of target (15%)
     chunk_max_tokens: int = 512  # hard cap; chunks never exceed this
