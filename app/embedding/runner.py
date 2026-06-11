@@ -39,21 +39,9 @@ async def index_build_runner(
     """
     settings = get_settings()
 
-    # Initialize tokenizer and chunker
-    try:
-        tokenizer = EmbedderTokenizer(tokenizer_path=settings.embedder_tokenizer_path)
-    except Exception as e:
-        _log.error("failed to load tokenizer", error=str(e), exc_info=True)
-        raise
-
-    chunker = Chunker(
-        tokenizer=tokenizer,
-        target_tokens=settings.chunk_target_tokens,
-        overlap_ratio=settings.chunk_overlap_ratio,
-        max_tokens=settings.chunk_max_tokens,
-    )
-
-    # Create the run (or get in-flight run if one exists — FR-026)
+    # Create the run first (or get the in-flight one — FR-026). Doing this before anything that
+    # can fail (e.g. tokenizer loading) means every failure path can finish the run as FAILED
+    # instead of leaving a stuck 'running' row that blocks all future builds for this client.
     async with session_factory() as session:
         async with session.begin():
             run, _ = await IndexBuildService.create_run(session, client_id, triggered_by_user_id)
@@ -62,6 +50,15 @@ async def index_build_runner(
     _log.info("index build run started", client_id=client_id, run_id=run_id)
 
     try:
+        # Initialize tokenizer and chunker (exact token counting — FR-025)
+        tokenizer = EmbedderTokenizer(tokenizer_path=settings.embedder_tokenizer_path)
+        chunker = Chunker(
+            tokenizer=tokenizer,
+            target_tokens=settings.chunk_target_tokens,
+            overlap_ratio=settings.chunk_overlap_ratio,
+            max_tokens=settings.chunk_max_tokens,
+        )
+
         # Verify embedder version at startup (FR-025)
         if settings.embedder_model_version:
             try:
