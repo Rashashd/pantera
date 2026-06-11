@@ -1,6 +1,11 @@
-"""Section-aware chunking with overlap and token bounds."""
+"""Section-aware chunking with overlap and token bounds (FR-008).
 
-import re
+Chunking is done in pure token-ID space: encode once, slide a fixed-size window over the
+token ids, and decode each window exactly once. This guarantees forward progress and a hard
+upper bound on every chunk's token count — earlier code decoded then re-encoded text inside a
+``while count_tokens(...) > max`` loop, which never terminated when decode→encode wasn't
+length-stable (e.g. out-of-vocabulary text that decodes to ``[UNK] [UNK] ...``).
+"""
 
 import structlog
 
@@ -9,6 +14,10 @@ from app.embedding.parsers.base import ParsedChunk
 from app.embedding.tokenizer import EmbedderTokenizer
 
 logger = structlog.get_logger(__name__)
+
+# Mirror EmbedderTokenizer.count_tokens' special-token reserve so a window's reported
+# count (len(ids) + reserve) never exceeds max_tokens.
+_RESERVE = 2
 
 
 class Chunker:
@@ -27,7 +36,7 @@ class Chunker:
             tokenizer: EmbedderTokenizer instance for accurate token counting.
             target_tokens: Target chunk size in tokens (approximate).
             overlap_ratio: Overlap as a fraction of target (e.g., 0.15 = 15%).
-            max_tokens: Hard cap; chunks never exceed this.
+            max_tokens: Hard cap; chunks never exceed this (incl. the special-token reserve).
         """
         self.tokenizer = tokenizer
         self.target_tokens = target_tokens
@@ -35,169 +44,87 @@ class Chunker:
         self.max_tokens = max_tokens
 
     def chunk(self, chunks: list[ParsedChunk]) -> list[ParsedChunk]:
-        """Apply chunking to parsed chunks (respects section boundaries and structural types).
+        """Apply size-based splitting to parsed chunks, assigning sequential ordinals.
 
-        Structural chunks (table, figure_caption) are exempt from overlap.
-        Oversized chunks are split at token boundaries.
+        Structural chunks (table, figure_caption) are kept whole unless they exceed the hard
+        cap, in which case they are split with NO overlap. Text/structured_data chunks are
+        split into ~target_tokens windows with ~overlap_tokens of overlap.
 
         Args:
             chunks: List of ParsedChunk from a parser.
 
         Returns:
-            List of ParsedChunk after size-based splitting, with updated ordinals.
+            List of ParsedChunk after splitting, with updated 0-based ordinals.
         """
-        result = []
-        current_ordinal = 0
-
+        result: list[ParsedChunk] = []
         for chunk in chunks:
-            # Structural chunks (table, figure_caption) are NOT split and do NOT have overlap
-            if chunk.chunk_type in (ChunkType.TABLE, ChunkType.FIGURE_CAPTION):
-                if self._is_oversized(chunk.text):
-                    # Hard-split at token boundary as last resort
-                    sub_chunks = self._hard_split_oversized(
-                        chunk.text, chunk.chunk_type, chunk.section
+            for text in self._split_one(chunk):
+                result.append(
+                    ParsedChunk(
+                        text=text,
+                        chunk_type=chunk.chunk_type,
+                        section=chunk.section,
+                        ordinal=len(result),
                     )
-                    for sub_chunk in sub_chunks:
-                        sub_chunk.ordinal = current_ordinal
-                        current_ordinal += 1
-                        result.append(sub_chunk)
-                else:
-                    chunk.ordinal = current_ordinal
-                    current_ordinal += 1
-                    result.append(chunk)
-            else:
-                # Text and structured_data chunks use overlap-based splitting
-                split_chunks = self._split_text_chunk(chunk.text, chunk.chunk_type, chunk.section)
-                for sub_chunk in split_chunks:
-                    sub_chunk.ordinal = current_ordinal
-                    current_ordinal += 1
-                    result.append(sub_chunk)
-
-        return result
-
-    def _is_oversized(self, text: str) -> bool:
-        """Check if text exceeds the hard cap."""
-        return self.tokenizer.count_tokens(text) > self.max_tokens
-
-    def _hard_split_oversized(
-        self, text: str, chunk_type: ChunkType, section: str | None
-    ) -> list[ParsedChunk]:
-        """Split an oversized chunk at token boundaries (hard cap enforcement).
-
-        Prefers table-row boundaries; falls back to any token boundary.
-        Logs a warning when this occurs.
-        """
-        logger.warning(
-            f"Oversized {chunk_type} chunk (exceeds {self.max_tokens} tokens); "
-            "splitting at token boundary"
-        )
-        result = []
-        remaining = text
-        chunk_order = 0
-
-        while remaining:
-            # Try to fit up to max_tokens
-            split = self._split_at_token_boundary(remaining, max_tokens=self.max_tokens)
-            chunk_text, remaining = split
-
-            result.append(
-                ParsedChunk(
-                    text=chunk_text,
-                    chunk_type=chunk_type,
-                    section=section,
-                    ordinal=chunk_order,
                 )
-            )
-            chunk_order += 1
-
         return result
 
-    def _split_text_chunk(
-        self, text: str, chunk_type: ChunkType, section: str | None
-    ) -> list[ParsedChunk]:
-        """Split text chunk with overlap (target → max_tokens cap)."""
-        result = []
-        remaining = text
-        chunk_order = 0
-        overlap_buffer = ""
+    def _split_one(self, chunk: ParsedChunk) -> list[str]:
+        """Return the chunk's text split into one or more pieces that fit the token budget."""
+        if not chunk.text.strip():
+            return []
 
-        while remaining:
-            # Target size with overlap
-            chunk_text, remaining = self._split_at_token_boundary(
-                overlap_buffer + remaining,
-                max_tokens=self.target_tokens,
+        ids = self.tokenizer.tokenizer.encode(chunk.text).ids
+        cap = self.max_tokens - _RESERVE  # raw-id budget that keeps count_tokens <= max_tokens
+        structural = chunk.chunk_type in (ChunkType.TABLE, ChunkType.FIGURE_CAPTION)
+
+        if structural:
+            if len(ids) <= cap:
+                return [chunk.text]  # keep structural chunks verbatim
+            logger.warning(
+                "oversized structural chunk; hard-splitting at token boundary",
+                chunk_type=str(chunk.chunk_type),
+                max_tokens=self.max_tokens,
             )
+            return self._window_ids(ids, window=cap, step=cap)  # no overlap
 
-            # Remove overlap prefix from displayed chunk (keep text, not in result yet)
-            if chunk_order > 0:
-                # Remove the leading overlap portion from display
-                if len(overlap_buffer) > 0 and chunk_text.startswith(overlap_buffer):
-                    chunk_text = chunk_text[len(overlap_buffer) :]
-                    # Re-verify after string slicing (token boundaries don't match char boundaries)
-                    while self.tokenizer.count_tokens(chunk_text) > self.max_tokens and chunk_text:
-                        chunk_text, _ = self._split_at_token_boundary(
-                            chunk_text, max_tokens=self.max_tokens
-                        )
+        # Text / structured_data: keep small chunks verbatim, otherwise window with overlap.
+        if len(ids) <= self.target_tokens:
+            return [chunk.text]
+        window = min(self.target_tokens, cap)
+        step = max(1, window - self.overlap_tokens)
+        return self._window_ids(ids, window=window, step=step)
 
-            result.append(
-                ParsedChunk(
-                    text=chunk_text,
-                    chunk_type=chunk_type,
-                    section=section,
-                    ordinal=chunk_order,
-                )
-            )
+    def _window_ids(self, ids: list[int], window: int, step: int) -> list[str]:
+        """Slide a fixed window over token ids, decoding each once. Always terminates."""
+        pieces: list[str] = []
+        start = 0
+        n = len(ids)
+        while start < n:
+            sub = ids[start : start + window]
+            text = self.tokenizer.tokenizer.decode(sub, skip_special_tokens=True).strip()
+            if text:
+                # decode→re-encode is not length-stable for out-of-vocab text (it can decode
+                # to "[UNK] [UNK] ..." that re-tokenizes into several tokens each), so enforce
+                # the cap on the actual stored text that count_tokens will measure.
+                pieces.extend(self._enforce_cap(text))
+            if start + window >= n:
+                break
+            start += step
+        return pieces
 
-            # Prepare overlap for next iteration
-            if remaining:
-                overlap_buffer = self._get_overlap_suffix(chunk_text)
-                chunk_order += 1
-
-        return result
-
-    def _split_at_token_boundary(self, text: str, max_tokens: int) -> tuple[str, str]:
-        """Split text at a token boundary, respecting sentence boundaries when possible.
-
-        Returns:
-            (chunk_text, remaining_text)
-        """
-        tokens = self.tokenizer.tokenizer.encode(text)
-        if len(tokens.ids) <= max_tokens:
-            return text, ""
-
-        # Take up to max_tokens; decode back to text
-        limited_ids = tokens.ids[:max_tokens]
-        chunk_text = self.tokenizer.tokenizer.decode(limited_ids, skip_special_tokens=True)
-
-        # Find the last sentence boundary within the chunk
-        last_match = None
-        for match in re.finditer(r"[.!?]\s", chunk_text):
-            last_match = match
-
-        if last_match:
-            # Split at last sentence boundary
-            split_pos = last_match.end()
-            return chunk_text[:split_pos], text[split_pos:].strip()
-        else:
-            # No sentence boundary; return the decoded chunk and remaining original text
-            # Find approximately where the decoded text ends in the original (best effort)
-            # by looking for the last few words of chunk_text in the original
-            chunk_tokens_count = len(limited_ids)
-            remaining_tokens = tokens.ids[chunk_tokens_count:]
-            remaining_text = self.tokenizer.tokenizer.decode(
-                remaining_tokens, skip_special_tokens=True
-            )
-            return chunk_text, remaining_text.strip()
-
-    def _get_overlap_suffix(self, chunk_text: str, overlap_tokens: int | None = None) -> str:
-        """Extract a suffix of the chunk for overlap into the next chunk."""
-        if overlap_tokens is None:
-            overlap_tokens = self.overlap_tokens
-
-        tokens = self.tokenizer.tokenizer.encode(chunk_text)
-        if len(tokens.ids) <= overlap_tokens:
-            return chunk_text
-
-        # Take the last overlap_tokens
-        overlap_ids = tokens.ids[-overlap_tokens:]
-        return self.tokenizer.tokenizer.decode(overlap_ids, skip_special_tokens=True)
+    def _enforce_cap(self, text: str) -> list[str]:
+        """Guarantee count_tokens(piece) <= max_tokens by halving text until it fits."""
+        if self.tokenizer.count_tokens(text) <= self.max_tokens:
+            return [text]
+        mid = len(text) // 2
+        if mid == 0:
+            return [text]  # single char already over cap: nothing more we can split
+        left = text[:mid].strip()
+        right = text[mid:].strip()
+        out: list[str] = []
+        if left:
+            out.extend(self._enforce_cap(left))
+        if right:
+            out.extend(self._enforce_cap(right))
+        return out or [text]
