@@ -41,10 +41,10 @@ class TestTokenizerCount:
 
     def test_token_count_includes_reserve(self, tokenizer: EmbedderTokenizer) -> None:
         """Test that special-token reserve is included in count."""
-        # The reserve should be 2 tokens
         text = "test"
         count = tokenizer.count_tokens(text)
-        base_tokens = len(tokenizer.tokenizer.encode(text).ids)
+        # base is without special tokens; count adds 2 for CLS+SEP
+        base_tokens = len(tokenizer.tokenizer.encode(text, add_special_tokens=False).ids)
         assert count == base_tokens + 2
 
     def test_nonexistent_tokenizer_raises_error(self) -> None:

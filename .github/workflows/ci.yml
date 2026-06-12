@@ -39,9 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # LFS not needed for pytest — test job never loads ONNX models directly.
-          # Skipping saves ~330 MB download and keeps the job well under timeout.
-          lfs: false
+          lfs: true
       - name: Install uv
         uses: astral-sh/setup-uv@v4
       - name: Sync dependencies (dev + modelserver groups; exclude heavy training group)
@@ -80,6 +78,8 @@ jobs:
       - name: Tests with coverage (80% overall gate)
         env:
           PANTERA_INTEGRATION: "1"
+          # PYTHONPATH needed so subprocess calls to run_eval.py can import modelserver.*
+          PYTHONPATH: "."
           # Integration tests read DB/Redis URLs from Vault, not the environment; we keep
           # DATABASE_URL/REDIS_URL OUT of env so Settings() defaults stay clean for unit tests.
         run: uv run pytest --cov=app --cov=worker --cov=modelserver --cov-report=term-missing
