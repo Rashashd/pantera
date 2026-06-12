@@ -18,6 +18,7 @@ import yaml
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
+
 # Skip tests that load the real 110 MB ONNX when LFS hasn't been downloaded.
 # (LFS pointer files are ~133 bytes; real model is >100 MB.)
 def _real_onnx_present() -> bool:
