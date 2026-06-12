@@ -2,17 +2,17 @@
   "artifacts": [
     {
       "name": "classifier",
-      "file": "classifier.joblib",
-      "format": "joblib",
-      "version": "v1.0-tfidf-lr",
-      "sha256": "a70510195f28047911bd36f57d355269db28020b1baca66ed108f77a71079636"
+      "file": "classifier.onnx",
+      "format": "onnx",
+      "version": "v1.0-biomedbert-quant",
+      "sha256": "0cb2428adf72f4960b2dcd318a9e2659f327639d5ec4e31677015be840ed1af9"
     },
     {
       "name": "embedder",
       "file": "embedder.onnx",
       "format": "onnx",
-      "version": "v1.0-biomed-gather",
-      "sha256": "6bd398b2e9726ff81553137ecb528db142bd78099dc3fdb2c9c0456022b9c27a",
+      "version": "v1.0-biomedbert-quant",
+      "sha256": "8d4729fcccb329fc8fc435b5815b3692baa6438ba62e425a96dbc234a686881a",
       "dim": 768,
       "max_tokens": 512
     },
@@ -20,23 +20,8 @@
       "name": "tokenizer",
       "file": "tokenizer.json",
       "format": "tokenizer",
-      "version": "v1.0-wordlevel",
-      "sha256": "aec6af8b382712d85c63f3c88472db76df511b7f784cf51114293e2902ca8de8"
-    },
-    {
-      "name": "reranker",
-      "file": "reranker.onnx",
-      "format": "onnx",
-      "version": "v1.0-ms-marco-minilm-l6-int8",
-      "sha256": "5a0be99394f650a28537f3282a639162cb8db554ed24a4fc1feef5a86c8cc9b4",
-      "max_tokens": 512
-    },
-    {
-      "name": "reranker_tokenizer",
-      "file": "reranker_tokenizer.json",
-      "format": "tokenizer",
-      "version": "v1.0-ms-marco-minilm-l6",
-      "sha256": "d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66"
+      "version": "v1.0-biomedbert",
+      "sha256": "9355eae89d401cee6b1f7c9acaf4791191e3b22c918e5f616b6baea13b66e748"
     }
   ]
 }
