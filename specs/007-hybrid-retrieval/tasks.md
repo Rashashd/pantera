@@ -180,12 +180,12 @@ still succeeds via live embed; embedder-version change → stale entry not used.
 
 ### Tests for User Story 5
 
-- [ ] T041 [P] [US5] Integration test cache hit (no 2nd embed) + cache-down fallback in `tests/integration/test_retrieval_empty_and_cache.py` (the cache cases) (US5/SC-005)
+- [X] T041 [P] [US5] Integration test cache hit (no 2nd embed) + cache-down fallback in `tests/integration/test_retrieval_empty_and_cache.py` (the cache cases) (US5/SC-005)
 
 ### Implementation for User Story 5
 
 - [X] T042 [US5] Add Redis GET/SET-with-TTL to `get_query_embedding()` in `app/rag/query_embed.py` (key = `rag:qemb:{embedder_sha}:{hash(norm_query)}`; best-effort try/except; version in key) (D7/FR-016–018) — extends T015
-- [ ] T043 [US5] Pass `app.state.redis` from the route into `service.retrieve()`; ensure cache failures are caught, logged (`rag.cache.unavailable`), and non-fatal in `app/rag/routes.py`/`service.py` (FR-018)
+- [X] T043 [US5] Pass `app.state.redis` from the route into `service.retrieve()`; ensure cache failures are caught, logged (`rag.cache.unavailable`), and non-fatal in `app/rag/routes.py`/`service.py` (FR-018)
 
 **Checkpoint**: repeated queries cached; cache strictly optional.
 
