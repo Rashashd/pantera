@@ -28,6 +28,7 @@ def _real_onnx_present() -> bool:
     except OSError:
         return False
 
+
 _skip_no_onnx = pytest.mark.skipif(
     not _real_onnx_present(),
     reason="Real ONNX artifacts not present (lfs not downloaded)",
