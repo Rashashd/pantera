@@ -95,7 +95,9 @@ async def test_get_finding_404_nonexistent(client, make_staff_user, make_client)
 
 
 @pytest.mark.asyncio
-async def test_get_finding_suspended_client(client, auth_app, make_staff_user, make_client, seeded_finding):
+async def test_get_finding_suspended_client(
+    client, auth_app, make_staff_user, make_client, seeded_finding
+):
     """Suspended client returns 400 CLIENT_SUSPENDED via get_acting_client (FR-013)."""
     from sqlalchemy import update
 

@@ -98,12 +98,12 @@ the first is filtered (logged) and the second proceeds to a finding.
 
 ### Tests for User Story 2
 
-- [ ] T024 [P] [US2] Unit tests for the substantive-mention gate per implementation-notes §8.1 (incidental comparator with no same-sentence DISEASE → filtered; drug in title/summary OR co-occurring with a DISEASE in one sentence → pass) in `tests/unit/test_triage_prefilter.py`.
+- [x] T024 [P] [US2] Unit tests for the substantive-mention gate per implementation-notes §8.1 (incidental comparator with no same-sentence DISEASE → filtered; drug in title/summary OR co-occurring with a DISEASE in one sentence → pass) in `tests/unit/test_triage_prefilter.py`.
 
 ### Implementation for User Story 2
 
-- [ ] T025 [US2] Implement the substantive-mention pre-filter in `app/triage/prefilter.py` per the deterministic rule in implementation-notes §8.1 / spec FR-001 (normalized watchlist-drug CHEMICAL match over `title + "\n" + summary`; substantive = title/summary match OR same-sentence DISEASE co-occurrence; else incidental). Emit `triage.prefilter.filtered` (client_id, document_id, drug, reason) when filtered (depends T009).
-- [ ] T026 [US2] Wire the pre-filter into `app/triage/service.py` as a **single call-site insertion** ahead of classification so filtered documents produce no finding and short-circuit; keep all heuristic logic in `prefilter.py`, not `service.py` (depends T020, T025).
+- [x] T025 [US2] Implement the substantive-mention pre-filter in `app/triage/prefilter.py` per the deterministic rule in implementation-notes §8.1 / spec FR-001 (normalized watchlist-drug CHEMICAL match over `title + "\n" + summary`; substantive = title/summary match OR same-sentence DISEASE co-occurrence; else incidental). Emit `triage.prefilter.filtered` (client_id, document_id, drug, reason) when filtered (depends T009).
+- [x] T026 [US2] Wire the pre-filter into `app/triage/service.py` as a **single call-site insertion** ahead of classification so filtered documents produce no finding and short-circuit; keep all heuristic logic in `prefilter.py`, not `service.py` (depends T020, T025).
 
 **Checkpoint**: US1 + US2 — incidental mentions no longer create spurious findings.
 
@@ -118,12 +118,12 @@ assert A escalates and B uses ICH defaults.
 
 ### Tests for User Story 3
 
-- [ ] T027 [P] [US3] Unit tests for the custom-keyword layer (escalate-only `max(rank)`; empty list → ICH defaults; no downgrade) and client isolation in `tests/unit/test_triage_custom_keywords.py`.
+- [x] T027 [P] [US3] Unit tests for the custom-keyword layer (escalate-only `max(rank)`; empty list → ICH defaults; no downgrade) and client isolation in `tests/unit/test_triage_custom_keywords.py`.
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] Extend `app/triage/severity.py` with the custom-keyword layer (case-insensitive substring; `tier` ∈ {serious, life-threatening}; combine via `max(rank)` so it can only escalate) (depends T015).
-- [ ] T029 [US3] Pass the acting client's `custom_severity_keywords` (client-scoped) into severity bucketing. Load them via a small accessor (e.g. in `app/triage/severity.py` or a client-read helper) and keep the `service.py` change to passing the argument through — avoid growing `service.py` (depends T020, T028).
+- [x] T028 [US3] Extend `app/triage/severity.py` with the custom-keyword layer (case-insensitive substring; `tier` ∈ {serious, life-threatening}; combine via `max(rank)` so it can only escalate) (depends T015).
+- [x] T029 [US3] Pass the acting client's `custom_severity_keywords` (client-scoped) into severity bucketing. Load them via a small accessor (e.g. in `app/triage/severity.py` or a client-read helper) and keep the `service.py` change to passing the argument through — avoid growing `service.py` (depends T020, T028).
 
 **Checkpoint**: US1–US3 — client-specific severity thresholds enforced without cross-client leakage.
 
@@ -139,13 +139,13 @@ escalation-direction check holds; inject an LLM fault and confirm escalate/posit
 
 ### Tests for User Story 4
 
-- [ ] T030 [P] [US4] Author the triage golden set `tests/data/triage_golden_set.jsonl` covering the six mandatory case categories (five buckets; regulatory floor; low-confidence→LLM; source_reliability absent; NO-classified regulatory alert → irrelevant; custom-keyword escalation) plus a planted-instruction injection case.
-- [ ] T031 [P] [US4] Fail-safe + failure-matrix tests (implementation-notes §8.3) in `tests/unit/test_triage_failsafe.py`: LLM outage → low-confidence escalates to expedited AND NO-finding defaults to `positive` (both logged); **classifier (`ModelserverError`) → no finding created + `triage.operator_alert` ERROR (stage=classify)**; **DB upsert/audit failure → transaction rolls back, no finding, `triage.operator_alert` (stage=persist)**.
+- [x] T030 [P] [US4] Author the triage golden set `tests/data/triage_golden_set.jsonl` covering the six mandatory case categories (five buckets; regulatory floor; low-confidence→LLM; source_reliability absent; NO-classified regulatory alert → irrelevant; custom-keyword escalation) plus a planted-instruction injection case.
+- [x] T031 [P] [US4] Fail-safe + failure-matrix tests (implementation-notes §8.3) in `tests/unit/test_triage_failsafe.py`: LLM outage → low-confidence escalates to expedited AND NO-finding defaults to `positive` (both logged); **classifier (`ModelserverError`) → no finding created + `triage.operator_alert` ERROR (stage=classify)**; **DB upsert/audit failure → transaction rolls back, no finding, `triage.operator_alert` (stage=persist)**.
 
 ### Implementation for User Story 4
 
-- [ ] T032 [US4] Implement the triage eval runner in `tests/integration/test_triage_eval.py` (compute precision/recall vs `eval_thresholds.yaml`; assert recall ≥ 0.90 AND precision ≥ 0.75 — either-below fails; assert false-negatives < false-positives for SC-003) (depends T030).
-- [ ] T033 [US4] Wire the triage eval gate into the CI `eval` job in `.github/workflows/ci.yml` (alongside the classifier/RAG gates; `lfs: true` already present); ensure regression blocks merge (depends T032).
+- [x] T032 [US4] Implement the triage eval runner in `tests/integration/test_triage_eval.py` (compute precision/recall vs `eval_thresholds.yaml`; assert recall ≥ 0.90 AND precision ≥ 0.75 — either-below fails; assert false-negatives < false-positives for SC-003) (depends T030).
+- [x] T033 [US4] Wire the triage eval gate into the CI `eval` job in `.github/workflows/ci.yml` (alongside the classifier/RAG gates; `lfs: true` already present); ensure regression blocks merge (depends T032).
 
 **Checkpoint**: All user stories functional; safety bias proven by a committed number in CI.
 
@@ -155,10 +155,10 @@ escalation-direction check holds; inject an LLM fault and confirm escalate/posit
 
 **Purpose**: Reliability backstop, observability, docs, quality gates.
 
-- [ ] T034 Implement the staleness sweep in `app/triage/sweep.py` (find `DocumentIndexStatus.INDEXED` documents with zero `findings` rows older than `settings.triage_staleness_max_age_minutes`; structured-log + operator signal) for SC-001.
-- [ ] T035 [P] Review per-stage structured logging (pre-filter / classify / bucket-or-valence / route) — each binds `client_id` + `finding_id`/`document_id`, never PII/secrets.
-- [ ] T036 [P] Update `docs/DECISIONS.md` (scispaCy reaction-extraction choice; LLM-ahead-of-guardrails sequenced deviation) and `docs/RUNBOOK.md` (scispaCy model download step).
-- [ ] T037 Run `uv run ruff check` AND `uv run black --check app worker tests` AND `uv run pytest --cov` — confirm 80% overall / 95%+ on the triage classifier path.
+- [x] T034 Implement the staleness sweep in `app/triage/sweep.py` (find `DocumentIndexStatus.INDEXED` documents with zero `findings` rows older than `settings.triage_staleness_max_age_minutes`; structured-log + operator signal) for SC-001.
+- [x] T035 [P] Review per-stage structured logging (pre-filter / classify / bucket-or-valence / route) — each binds `client_id` + `finding_id`/`document_id`, never PII/secrets.
+- [x] T036 [P] Update `docs/DECISIONS.md` (scispaCy reaction-extraction choice; LLM-ahead-of-guardrails sequenced deviation) and `docs/RUNBOOK.md` (scispaCy model download step).
+- [x] T037 Run `uv run ruff check` AND `uv run black --check app worker tests` AND `uv run pytest --cov` — confirm 80% overall / 95%+ on the triage classifier path.
 - [ ] T038 Execute `specs/008-triage-routing/quickstart.md` scenarios 1–7 against the live stack and record results.
 
 ---

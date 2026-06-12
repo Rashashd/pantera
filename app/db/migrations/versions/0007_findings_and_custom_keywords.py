@@ -62,9 +62,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_findings_client_id", "findings", ["client_id"], unique=False)
     op.create_index("ix_findings_status", "findings", ["status"], unique=False)
-    op.create_index(
-        "ix_findings_client_bucket", "findings", ["client_id", "bucket"], unique=False
-    )
+    op.create_index("ix_findings_client_bucket", "findings", ["client_id", "bucket"], unique=False)
 
     op.add_column(
         "clients",
