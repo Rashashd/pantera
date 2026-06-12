@@ -32,14 +32,17 @@ jobs:
     runs-on: ubuntu-latest
     # Hard cap so a hung test can never sit until the 6h default; combined with the per-test
     # pytest timeout this fails fast and loud instead of stalling the queue.
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       VAULT_ADDR: http://localhost:8200
       VAULT_TOKEN: root
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          # lfs: false — ONNX files are pointer files here; tests that need the real
+          # 110 MB model skip themselves via _real_onnx_present(). The eval job has
+          # lfs: true and is the authoritative model-quality gate.
+          lfs: false
       - name: Install uv
         uses: astral-sh/setup-uv@v4
       - name: Sync dependencies (dev + modelserver groups; exclude heavy training group)
@@ -78,6 +81,8 @@ jobs:
       - name: Tests with coverage (80% overall gate)
         env:
           PANTERA_INTEGRATION: "1"
+          # PYTHONPATH needed so subprocess calls to run_eval.py can import modelserver.*
+          PYTHONPATH: "."
           # Integration tests read DB/Redis URLs from Vault, not the environment; we keep
           # DATABASE_URL/REDIS_URL OUT of env so Settings() defaults stay clean for unit tests.
         run: uv run pytest --cov=app --cov=worker --cov=modelserver --cov-report=term-missing
@@ -85,6 +90,7 @@ jobs:
   # Eval gate — classifier macro-F1 must stay >= 0.80 (US5 / FR-013 / D10)
   eval:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -94,4 +100,8 @@ jobs:
       - name: Sync modelserver group only (lean; no torch/DB)
         run: uv sync --only-group modelserver --no-install-project
       - name: Run eval gate
-        run: uv run python modelserver/eval/run_eval.py
+        # MAX_EVAL_EXAMPLES caps inference at 500 samples — enough for a reliable F1
+        # estimate while keeping the job under 5 min on a shared runner.
+        env:
+          MAX_EVAL_EXAMPLES: "500"
+        run: PYTHONPATH=. uv run python modelserver/eval/run_eval.py

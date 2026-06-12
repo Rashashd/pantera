@@ -28,10 +28,10 @@ class EmbedderTokenizer:
 
     def count_tokens(self, text: str) -> int:
         """Count tokens in text using the embedder's tokenizer + special-token reserve (FR-025)."""
-        tokens = self.tokenizer.encode(text)
-        # Reserve space for special tokens (e.g., [CLS], [SEP])
-        reserve = 2
-        return len(tokens.ids) + reserve
+        # Encode without special tokens so the +2 reserve isn't double-counted when the
+        # tokenizer (e.g. BiomedBERT) already adds CLS/SEP in its encode() output.
+        tokens = self.tokenizer.encode(text, add_special_tokens=False)
+        return len(tokens.ids) + 2
 
     @staticmethod
     async def verify_embedder_version(client: ModelserverClient, expected_version: str) -> None:
