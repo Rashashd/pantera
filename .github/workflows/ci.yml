@@ -39,7 +39,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          # lfs: false — ONNX files are pointer files here; tests that need the real
+          # 110 MB model skip themselves via _real_onnx_present(). The eval job has
+          # lfs: true and is the authoritative model-quality gate.
+          lfs: false
       - name: Install uv
         uses: astral-sh/setup-uv@v4
       - name: Sync dependencies (dev + modelserver groups; exclude heavy training group)
