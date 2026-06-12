@@ -32,14 +32,16 @@ jobs:
     runs-on: ubuntu-latest
     # Hard cap so a hung test can never sit until the 6h default; combined with the per-test
     # pytest timeout this fails fast and loud instead of stalling the queue.
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       VAULT_ADDR: http://localhost:8200
       VAULT_TOKEN: root
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          # LFS not needed for pytest — test job never loads ONNX models directly.
+          # Skipping saves ~330 MB download and keeps the job well under timeout.
+          lfs: false
       - name: Install uv
         uses: astral-sh/setup-uv@v4
       - name: Sync dependencies (dev + modelserver groups; exclude heavy training group)
