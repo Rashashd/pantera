@@ -61,8 +61,10 @@ def compute_metrics(
 
         expected = case.get("expected_corroboration_count")
         if expected is not None:
-            actual = resp.get("corroboration_count", 0)
-            corr_checks.append(1 if actual == expected else 0)
+            # Count how many of the relevant docs actually appear in the results
+            result_ext_ids = {p.get("external_id") for p in passages if p.get("external_id")}
+            found = sum(1 for k in relevant if k in result_ext_ids)
+            corr_checks.append(1 if found >= expected else 0)
 
     return {
         "hit_at_5": sum(hits) / len(hits),

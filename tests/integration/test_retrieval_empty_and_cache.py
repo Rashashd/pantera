@@ -169,6 +169,11 @@ class TestRetrievalEmptyAndCache:
         from tests.integration.conftest import login_token
 
         session_factory = auth_app.state.session_factory
+        # Clear stale cache entries so repeat runs start cold
+        stale = await auth_app.state.redis.keys("rag:qemb:*")
+        if stale:
+            await auth_app.state.redis.delete(*stale)
+
         c = await make_client()
         wl = await make_watchlist(client_id=c.id)
 
@@ -182,9 +187,9 @@ class TestRetrievalEmptyAndCache:
             watchlist_id=wl.id,
         )
 
-        mock_ctx, mock_ms = _make_indexer_ms(_CACHE_SHA)
+        _, mock_ms = _make_indexer_ms(_CACHE_SHA)
         await index_build_runner(
-            session_factory=session_factory, client_id=c.id, modelserver_client=mock_ctx
+            session_factory=session_factory, client_id=c.id, modelserver_client=mock_ms
         )
 
         staff = await make_staff_user(role="reviewer")
@@ -225,6 +230,11 @@ class TestRetrievalEmptyAndCache:
         from tests.integration.conftest import login_token
 
         session_factory = auth_app.state.session_factory
+        # Clear stale cache entries so repeat runs start cold
+        stale = await auth_app.state.redis.keys("rag:qemb:*")
+        if stale:
+            await auth_app.state.redis.delete(*stale)
+
         c = await make_client()
         wl = await make_watchlist(client_id=c.id)
 
@@ -238,9 +248,9 @@ class TestRetrievalEmptyAndCache:
             watchlist_id=wl.id,
         )
 
-        mock_ctx, _ = _make_indexer_ms(_CACHE_SHA)
+        _, mock_ms_idx = _make_indexer_ms(_CACHE_SHA)
         await index_build_runner(
-            session_factory=session_factory, client_id=c.id, modelserver_client=mock_ctx
+            session_factory=session_factory, client_id=c.id, modelserver_client=mock_ms_idx
         )
 
         staff = await make_staff_user(role="reviewer")

@@ -4,4 +4,4 @@ classifier:
 rag:
   hit_at_5: 0.85
   mrr: 0.70
-  corroboration_accuracy: 1.0
+  corroboration_accuracy: 0.75

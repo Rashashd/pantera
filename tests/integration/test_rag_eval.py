@@ -243,7 +243,7 @@ async def test_rag_eval_gate(
 
     from app.embedding.runner import index_build_runner
     from app.infra.modelserver_client import ModelserverClient
-    from app.ingestion.models import Document, DocumentSource
+    from app.ingestion.models import Document, DocumentSource, DocumentWatchlist
     from app.rag import service as rag_service
     from app.rag.schemas import RetrieveRequest
     from eval.rag.run_rag_eval import check_thresholds, compute_metrics, load_golden_set
@@ -268,7 +268,7 @@ async def test_rag_eval_gate(
 
     # Create a fresh client + watchlist for this eval run
     eval_client = await make_client(name="eval-gate-client")
-    await make_watchlist(client_id=eval_client.id)
+    eval_wl = await make_watchlist(client_id=eval_client.id)
 
     # Seed the golden corpus
     async with ms_client:
@@ -287,13 +287,24 @@ async def test_rag_eval_gate(
                     await s.flush()
                     ds = DocumentSource(
                         document_id=doc.id,
-                        source_name="pubmed",
+                        client_id=eval_client.id,
+                        source="pubmed",
+                        source_external_id=entry["ext_id"],
+                        source_reliability="peer_reviewed",
                         raw_payload=_PUBMED_XML.format(
                             title=entry["title"],
                             content=entry["content"],
                         ),
                     )
                     s.add(ds)
+                    await s.flush()
+                    s.add(
+                        DocumentWatchlist(
+                            document_id=doc.id,
+                            watchlist_id=eval_wl.id,
+                            client_id=eval_client.id,
+                        )
+                    )
 
         # Build chunk index via in-process modelserver
         await index_build_runner(

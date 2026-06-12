@@ -108,11 +108,11 @@ class TestRetrievalHybrid:
 
         assert resp.status_code == 200
         data = resp.json()
-        # At least one result should reference the xanthogranuloma doc
-        titles = [p["title"] for p in data["results"] if p.get("title")]
+        # At least one chunk's text should contain the rare term
+        texts = [p.get("text", "") for p in data["results"]]
         assert any(
-            "xanthogranuloma" in (t or "").lower() for t in titles
-        ), f"Expected xanthogranuloma in results, got titles: {titles}"
+            "xanthogranuloma" in t.lower() for t in texts
+        ), f"Expected xanthogranuloma chunk in results, got texts: {[t[:60] for t in texts]}"
 
     async def test_fused_results_are_deduplicated(
         self, auth_app, client, make_client, make_watchlist, make_document, make_staff_user
