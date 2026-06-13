@@ -1,5 +1,7 @@
 """Single validated settings object (non-secret config + in-memory secret fields)."""
 
+from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -64,6 +66,13 @@ class Settings(BaseSettings):
     triage_llm_max_tokens: int = 256
 
 
+@lru_cache
 def get_settings() -> Settings:
-    """Build a Settings instance from the environment (Vault bootstrap only)."""
+    """Return the process-wide Settings singleton.
+
+    Cached so that `load_secrets_from_vault(get_settings())` at startup populates the
+    SAME instance every caller sees. Returning a fresh `Settings()` each call (the prior
+    behaviour) meant secret-needing code reached via `get_settings()` (e.g. triage's LLM
+    fallback) never saw the Vault-loaded secrets.
+    """
     return Settings()
