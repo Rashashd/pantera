@@ -1,4 +1,4 @@
-"""Agent tool-selection eval gate: accuracy ≥ 0.85 against the golden set (SC-002).
+"""Agent tool-selection eval gate: accuracy ≥ 0.85 against the golden set (SC-004).
 
 Self-contained — uses a rule-based oracle, no live stack or LLM required.
 The oracle encodes the documented workflow rules from app/agent/prompts/system_draft.txt.
@@ -112,7 +112,7 @@ def _oracle_tool(case: dict) -> str | None:
 
 
 def test_tool_selection_golden_set():
-    """Oracle accuracy ≥ 0.85 vs. golden set (SC-002)."""
+    """Oracle accuracy ≥ 0.85 vs. golden set (SC-004)."""
     thresholds = _load_thresholds()
     min_accuracy = thresholds["agent"]["tool_selection_accuracy_min"]
 
