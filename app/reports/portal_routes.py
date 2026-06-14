@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import acting_client, current_active_principal
 from app.auth.models import User
+from app.auth.schemas import UserType
 from app.clients.models import Client
 from app.core.dependencies import get_session
 from app.reports.models import Report, ReportFinding
@@ -50,9 +51,17 @@ async def list_report_findings(
     client: Client = Depends(_get_client_read),
     session: AsyncSession = Depends(get_session),
 ) -> list[ReportFindingDetail]:
-    """Return all findings for a report (reviewer + client-user via acting_client)."""
+    """Return all findings for a report (reviewer + client-user via acting_client).
+
+    Client-users may only read findings of approved+sent reports (FR-030) — never in-workflow
+    (drafted/under_review/rejected/discarded) reports. Staff (reviewer/admin/manager) see all.
+    """
     report = await session.get(Report, report_id)
     if report is None or report.client_id != client.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="REPORT_NOT_FOUND")
+
+    # Per-client object-level authz: client-users are restricted to portal-visible statuses.
+    if principal.user_type == UserType.CLIENT.value and report.status not in _PORTAL_STATUSES:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="REPORT_NOT_FOUND")
 
     rows = (
