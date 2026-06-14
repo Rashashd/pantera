@@ -1,0 +1,160 @@
+"""Portal report read path (FR-030) and per-report findings endpoint (FR-031).
+
+Router registered once in main.py; T051 extends this file with portal routes.
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.auth.dependencies import acting_client, current_active_principal
+from app.auth.models import User
+from app.clients.models import Client
+from app.core.dependencies import get_session
+from app.reports.models import Report, ReportFinding
+from app.reports.schemas import (
+    PortalReportDetail,
+    PortalReportSummary,
+    ReportFindingDetail,
+)
+from app.triage.models import Finding
+
+router = APIRouter(prefix="/clients/{client_id}", tags=["portal"])
+
+_get_client_read = acting_client(allow_suspended=True)
+
+_PORTAL_STATUSES = {"approved", "sent", "delivered"}
+
+
+def _delivery_status(status: str) -> str:
+    """Derive delivery_status label from report status (FR-006b)."""
+    if status == "approved":
+        return "approved_pending_delivery"
+    if status in ("sent", "delivered"):
+        return status
+    return "approved_pending_delivery"
+
+
+# ── FR-031: per-report findings (used by reviewer batch UI + portal detail) ──
+
+
+@router.get(
+    "/reports/{report_id}/findings",
+    response_model=list[ReportFindingDetail],
+)
+async def list_report_findings(
+    report_id: int,
+    principal: User = Depends(current_active_principal),
+    client: Client = Depends(_get_client_read),
+    session: AsyncSession = Depends(get_session),
+) -> list[ReportFindingDetail]:
+    """Return all findings for a report (reviewer + client-user via acting_client)."""
+    report = await session.get(Report, report_id)
+    if report is None or report.client_id != client.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="REPORT_NOT_FOUND")
+
+    rows = (
+        await session.execute(
+            select(ReportFinding, Finding)
+            .join(Finding, ReportFinding.finding_id == Finding.id)
+            .where(ReportFinding.report_id == report_id)
+        )
+    ).all()
+
+    return [
+        ReportFindingDetail(
+            id=rf.id,
+            report_id=rf.report_id,
+            finding_id=rf.finding_id,
+            drug=f.drug,
+            reaction=f.reaction,
+            bucket=f.bucket,
+            state=rf.state,
+            created_at=rf.created_at,
+        )
+        for rf, f in rows
+    ]
+
+
+# ── FR-030: client portal report list + detail ────────────────────────────────
+
+
+@router.get(
+    "/portal/reports",
+    response_model=list[PortalReportSummary],
+)
+async def list_portal_reports(
+    watchlist_id: int | None = Query(None),
+    principal: User = Depends(current_active_principal),
+    client: Client = Depends(_get_client_read),
+    session: AsyncSession = Depends(get_session),
+) -> list[PortalReportSummary]:
+    """List approved+sent reports for the client portal, optionally filtered by watchlist."""
+    q = (
+        select(Report)
+        .where(
+            Report.client_id == client.id,
+            Report.status.in_(list(_PORTAL_STATUSES)),
+        )
+        .order_by(Report.created_at.desc())
+    )
+    if watchlist_id is not None:
+        q = q.where(Report.watchlist_id == watchlist_id)
+
+    rows = (await session.execute(q)).scalars().all()
+    return [
+        PortalReportSummary(
+            **{
+                k: getattr(r, k)
+                for k in (
+                    "id",
+                    "report_type",
+                    "status",
+                    "watchlist_id",
+                    "corroboration_count",
+                    "sla_deadline",
+                    "cycle_period_start",
+                    "cycle_period_end",
+                    "created_at",
+                    "updated_at",
+                )
+            },
+            delivery_status=_delivery_status(r.status),
+        )
+        for r in rows
+    ]
+
+
+@router.get(
+    "/portal/reports/{report_id}",
+    response_model=PortalReportDetail,
+)
+async def get_portal_report(
+    report_id: int,
+    principal: User = Depends(current_active_principal),
+    client: Client = Depends(_get_client_read),
+    session: AsyncSession = Depends(get_session),
+) -> PortalReportDetail:
+    """Return portal-safe full report; 404 when not approved-or-later or wrong client."""
+    report = await session.get(Report, report_id)
+    if report is None or report.client_id != client.id or report.status not in _PORTAL_STATUSES:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="REPORT_NOT_FOUND")
+
+    return PortalReportDetail(
+        id=report.id,
+        report_type=report.report_type,
+        status=report.status,
+        delivery_status=_delivery_status(report.status),
+        watchlist_id=report.watchlist_id,
+        corroboration_count=report.corroboration_count,
+        sla_deadline=report.sla_deadline,
+        cycle_period_start=report.cycle_period_start,
+        cycle_period_end=report.cycle_period_end,
+        created_at=report.created_at,
+        updated_at=report.updated_at,
+        structured_fields=report.structured_fields,
+        draft_body=report.draft_body,
+        corroboration_sources=report.corroboration_sources,
+    )

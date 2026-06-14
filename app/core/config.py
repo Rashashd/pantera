@@ -72,6 +72,24 @@ class Settings(BaseSettings):
     report_redraft_cap: int = 3
     expedited_sla_hours: int = 24
 
+    # --- LangSmith tracing (spec 10 FR-032/035) — optional; empty disables tracing ---
+    # NOT in _REQUIRED_SECRETS: app boots normally when empty.
+    langsmith_api_key: str = ""
+    langsmith_project: str = "pantera"
+
+    # Per-1K-token prices in USD, keyed by pinned model id.
+    # Units: USD per 1,000 tokens (input or output). Currency: USD.
+    # anthropic claude-3-5-sonnet-20241022: $3/$15 per M tokens = $0.003/$0.015 per 1K
+    # openai gpt-4o-2024-08-06: $2.50/$10 per M tokens = $0.0025/$0.010 per 1K
+    llm_price_per_1k_input_usd: dict = {
+        "claude-3-5-sonnet-20241022": 0.003,
+        "gpt-4o-2024-08-06": 0.0025,
+    }
+    llm_price_per_1k_output_usd: dict = {
+        "claude-3-5-sonnet-20241022": 0.015,
+        "gpt-4o-2024-08-06": 0.010,
+    }
+
 
 @lru_cache
 def get_settings() -> Settings:
