@@ -85,7 +85,12 @@ class Settings(BaseSettings):
     tracing_enabled: bool = False
 
     # --- ARQ worker / scheduler / dead-letter (spec 11) ---
-    jobs_inline: bool = False  # dev/test only; prod assertion forbids True (SC-008)
+    jobs_inline: bool = False  # dev/test only; startup forbids True unless dev_inline_ack (SC-008)
+    # Explicit acknowledgement that jobs_inline=True is intentional (dev/test). Startup refuses
+    # to boot with jobs_inline=True unless this is also set, so inline mode can never be enabled
+    # by accident in production (SC-008). Read from env DEV_INLINE_ACK; replaces the prior
+    # os.environ lookup in lifespan (config.py is the only place env is read).
+    dev_inline_ack: bool = False
     worker_max_jobs: int = 10  # bounds expedited fan-out (FR-015c)
     worker_job_timeout: int = 600  # per-job seconds (index/draft can be slow)
     worker_shutdown_grace_seconds: int = 600  # default = job timeout (FR-012)

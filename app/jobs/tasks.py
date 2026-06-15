@@ -23,8 +23,16 @@ async def _run_with_dlq(
     job_key: str,
     client_id: int | None,
     fn_kwargs: dict,
+    cycle_id: int | None = None,
+    failure_stage: str | None = None,
 ) -> Any:
-    """Execute fn; on final retry or PermanentJobError, record dead-letter and re-raise."""
+    """Execute fn; on final retry or PermanentJobError, record dead-letter and re-raise.
+
+    When cycle_id is set, a final failure (transient exhaustion OR PermanentJobError) also
+    marks the cycle ``failed`` with ``failure_stage`` (FR-018). That excludes the watchlist
+    from auto-scheduling until an operator abandons the cycle (FR-018a/b) — without it the
+    cycle would stay ``in_progress`` forever and the watchlist would never reschedule.
+    """
     wc = WorkerContext(ctx)
     job_try: int = ctx.get("job_try", 1)
     max_tries: int = ctx.get("max_tries", 3)
@@ -46,6 +54,12 @@ async def _run_with_dlq(
                 session_factory=wc.session_factory,
                 dispatcher=wc.dispatcher,
             )
+            if cycle_id is not None:
+                from app.scheduling.service import CycleService
+
+                async with wc.session_factory() as session:
+                    async with session.begin():
+                        await CycleService.mark_failed(session, cycle_id, failure_stage or job_name)
         if is_permanent(exc):
             # Swallow so ARQ does not retry; already dead-lettered above
             _log.error(
@@ -118,14 +132,11 @@ async def task_run_ingestion(
         job_key=job_key,
         client_id=client_id,
         fn_kwargs={},
+        cycle_id=cycle_id,
+        failure_stage="ingestion",
     )
 
     _log.info("task_run_ingestion.done", run_id=run_id, client_id=client_id, cycle_id=cycle_id)
-
-
-def _new_run_id() -> int:
-    """Placeholder — actual run id is created by IndexBuildService inside the task."""
-    return 0
 
 
 # ── task_index_build ──────────────────────────────────────────────────────────
@@ -151,7 +162,7 @@ async def task_index_build(
 
     async def _run() -> None:
         async with ModelserverClient.from_settings(wc.settings) as ms_client:
-            await index_build_runner(
+            run = await index_build_runner(
                 session_factory=wc.session_factory,
                 client_id=client_id,
                 watchlist_id=watchlist_id,
@@ -159,16 +170,34 @@ async def task_index_build(
                 dispatcher=wc.dispatcher,
                 app_state=wc,
             )
-        if cycle_id is not None:
-            from app.scheduling.service import CycleService
+        if cycle_id is None:
+            return  # manual client-wide build — no cycle to advance
 
-            async with wc.session_factory() as session:
-                async with session.begin():
-                    await CycleService.advance_stage(session, cycle_id, "triage")
-            # Triage ran inline; advance to expedited
-            async with wc.session_factory() as session:
-                async with session.begin():
-                    await CycleService.advance_stage(session, cycle_id, "expedited")
+        # Cycle path: triage + expedited fan-out already fired inline during indexing
+        # (no join — FR-015a). Link provenance, move to the consolidation stage, and enqueue
+        # task_consolidate — the stage that actually completes the cycle (FR-001, contract).
+        from app.scheduling.service import CycleService
+
+        async with wc.session_factory() as session:
+            async with session.begin():
+                cycle = await CycleService.advance_stage(session, cycle_id, "consolidation")
+                if cycle is None:
+                    return
+                if run is not None:
+                    await CycleService.set_index_build_run(session, cycle_id, run.id)
+                period_start_iso = cycle.period_start.isoformat()
+                period_end_iso = cycle.period_end.isoformat()
+
+        await enqueue(
+            "task_consolidate",
+            job_id=f"consolidate:{cycle_id}",
+            _ctx=ctx,
+            watchlist_id=watchlist_id,
+            client_id=client_id,
+            cycle_period_start=period_start_iso,
+            cycle_period_end=period_end_iso,
+            cycle_id=cycle_id,
+        )
 
     await _run_with_dlq(
         ctx,
@@ -177,6 +206,8 @@ async def task_index_build(
         job_key=job_key,
         client_id=client_id,
         fn_kwargs={},
+        cycle_id=cycle_id,
+        failure_stage="index",
     )
 
     _log.info(
@@ -278,8 +309,12 @@ async def task_consolidate(
         if cycle_id is not None:
             from app.scheduling.budget_policy import gate
 
+            # MUST commit: gate() dispatches WatchlistBudgetThresholdReached, whose audit row
+            # is staged on this session and would be rolled back without an explicit
+            # transaction (FR-019c — budget threshold surfaced to audit/dashboard).
             async with wc.session_factory() as session:
-                policy = await gate(session, watchlist_id, client_id, wc.dispatcher)
+                async with session.begin():
+                    policy = await gate(session, watchlist_id, client_id, wc.dispatcher)
 
             if policy == "pause":
                 _log.info(
@@ -336,6 +371,8 @@ async def task_consolidate(
         job_key=job_key,
         client_id=client_id,
         fn_kwargs={},
+        cycle_id=cycle_id,
+        failure_stage="consolidation",
     )
 
     _log.info(
@@ -364,36 +401,40 @@ async def task_cycle_start(
     job_key = f"cycle-start:{watchlist_id}:{period_start}"
 
     async def _run() -> None:
-        async with wc.session_factory() as session:
-            async with session.begin():
-                try:
-                    cycle = await CycleService.start_cycle(
-                        session,
-                        watchlist_id=watchlist_id,
-                        client_id=client_id,
-                        period_start=datetime.fromisoformat(period_start),
-                        period_end=datetime.fromisoformat(period_end),
-                    )
-                except Exception as exc:
-                    raise PermanentJobError(str(exc)) from exc
-            cycle_id = cycle.id
-
-        # Create ingestion run then enqueue
         from app.ingestion.service import create_run
 
+        # Idempotent re-entry (FR-005/SC-002): a retried task_cycle_start must reuse the
+        # in_progress cycle it already created — re-running start_cycle would hit the
+        # partial-unique guard, dead-letter, and strand the cycle in_progress forever.
         async with wc.session_factory() as session:
             async with session.begin():
-                run = await create_run(
-                    session,
-                    client_id=client_id,
-                    watchlist_id=watchlist_id,
-                    triggered_by_user_id=None,
-                )
-                run_id = run.id
+                cycle = await CycleService.get_in_progress(session, watchlist_id)
+                if cycle is None:
+                    try:
+                        cycle = await CycleService.start_cycle(
+                            session,
+                            watchlist_id=watchlist_id,
+                            client_id=client_id,
+                            period_start=datetime.fromisoformat(period_start),
+                            period_end=datetime.fromisoformat(period_end),
+                        )
+                    except Exception as exc:
+                        raise PermanentJobError(str(exc)) from exc
+                cycle_id = cycle.id
+                run_id = cycle.ingestion_run_id
 
-        async with wc.session_factory() as session:
-            async with session.begin():
-                await CycleService.set_ingestion_run(session, cycle_id, run_id)
+        # Create the ingestion run only if this cycle doesn't already have one (retry-safe).
+        if run_id is None:
+            async with wc.session_factory() as session:
+                async with session.begin():
+                    run = await create_run(
+                        session,
+                        client_id=client_id,
+                        watchlist_id=watchlist_id,
+                        triggered_by_user_id=None,
+                    )
+                    run_id = run.id
+                    await CycleService.set_ingestion_run(session, cycle_id, run_id)
 
         await enqueue(
             "task_run_ingestion",

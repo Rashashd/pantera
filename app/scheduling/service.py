@@ -54,6 +54,22 @@ class CycleService:
         return cycle
 
     @staticmethod
+    async def get_in_progress(session: AsyncSession, watchlist_id: int) -> WatchlistCycle | None:
+        """Return the watchlist's current in_progress cycle, if any (retry-safe re-entry)."""
+        return (
+            (
+                await session.execute(
+                    select(WatchlistCycle).where(
+                        WatchlistCycle.watchlist_id == watchlist_id,
+                        WatchlistCycle.status == "in_progress",
+                    )
+                )
+            )
+            .scalars()
+            .first()
+        )
+
+    @staticmethod
     async def advance_stage(
         session: AsyncSession, cycle_id: int, stage: str
     ) -> WatchlistCycle | None:

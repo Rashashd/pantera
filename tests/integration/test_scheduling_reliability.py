@@ -465,6 +465,159 @@ class TestCycleLifecycle:
         ), "consolidate_batch must not set status to approved — HITL invariant (FR-024)"
 
 
+class _DummyMS:
+    """Stand-in for ModelserverClient so the chain test needs no live modelserver."""
+
+    async def __aenter__(self) -> _DummyMS:
+        return self
+
+    async def __aexit__(self, *exc: object) -> bool:
+        return False
+
+
+async def _latest_cycle(factory, watchlist_id: int):
+    """Return the most-recent WatchlistCycle row for a watchlist."""
+    from sqlalchemy import select
+
+    from app.scheduling.models import WatchlistCycle
+
+    async with factory() as session:
+        return (
+            (
+                await session.execute(
+                    select(WatchlistCycle)
+                    .where(WatchlistCycle.watchlist_id == watchlist_id)
+                    .order_by(WatchlistCycle.id.desc())
+                    .limit(1)
+                )
+            )
+            .scalars()
+            .first()
+        )
+
+
+class TestCycleChain:
+    """T036: the full cadence loop advances ingest→index→consolidate to completion (FR-001).
+
+    Runs in inline mode with stubbed stage runners so it exercises the chain *wiring* and
+    terminal cycle state without external APIs/modelserver. These are the tests that would
+    have caught a chain that dead-ends before consolidation, or a failed stage that never
+    marks the cycle failed.
+    """
+
+    @pytest.mark.asyncio
+    async def test_full_chain_completes_cycle(self, auth_app, make_client, monkeypatch):
+        """task_cycle_start → ingestion → index → consolidate → cycle status=completed."""
+        import app.embedding.runner as embedding_runner
+        import app.infra.modelserver_client as ms_mod
+        import app.ingestion.runner as ingestion_runner
+        import app.reports.consolidation as consolidation_mod
+        from app.core.config import get_settings
+        from app.jobs.tasks import task_cycle_start
+
+        client = await make_client()
+        factory = auth_app.state.session_factory
+        wl_id = await _make_watchlist_with_item(factory, client.id)
+
+        # Stub every heavy stage runner — we are asserting chain wiring, not their internals.
+        async def _stub_ingestion(**kwargs):
+            return None
+
+        async def _stub_index(**kwargs):
+            return None  # None → task skips set_index_build_run, still advances + enqueues
+
+        async def _stub_consolidate(**kwargs):
+            return None
+
+        monkeypatch.setattr(ingestion_runner, "run_ingestion", _stub_ingestion)
+        monkeypatch.setattr(embedding_runner, "index_build_runner", _stub_index)
+        monkeypatch.setattr(consolidation_mod, "consolidate_batch", _stub_consolidate)
+        monkeypatch.setattr(ms_mod.ModelserverClient, "from_settings", lambda settings: _DummyMS())
+
+        settings = get_settings()
+        original_inline = settings.jobs_inline
+        settings.jobs_inline = True
+        ctx = {
+            "settings": settings,
+            "session_factory": factory,
+            "redis": None,
+            "dispatcher": auth_app.state.dispatcher,
+            "llm": None,
+        }
+        try:
+            now = datetime.now(UTC)
+            await task_cycle_start(
+                ctx,
+                watchlist_id=wl_id,
+                client_id=client.id,
+                period_start=(now - timedelta(days=7)).isoformat(),
+                period_end=now.isoformat(),
+            )
+        finally:
+            settings.jobs_inline = original_inline
+
+        cycle = await _latest_cycle(factory, wl_id)
+        assert cycle is not None
+        assert cycle.status == "completed", f"chain stalled at stage={cycle.current_stage}"
+        assert cycle.current_stage == "done"
+        assert cycle.completed_at is not None
+
+    @pytest.mark.asyncio
+    async def test_failed_stage_marks_cycle_failed(self, auth_app, make_client, monkeypatch):
+        """A chain stage that exhausts retries marks the cycle failed (FR-018, HIGH-2)."""
+        import app.ingestion.runner as ingestion_runner
+        from app.jobs.tasks import task_run_ingestion
+        from app.scheduling.service import CycleService
+
+        client = await make_client()
+        factory = auth_app.state.session_factory
+        wl_id = await _make_watchlist_with_item(factory, client.id)
+
+        async with factory() as session:
+            async with session.begin():
+                cycle = await CycleService.start_cycle(
+                    session,
+                    watchlist_id=wl_id,
+                    client_id=client.id,
+                    period_start=datetime(2026, 6, 1, tzinfo=UTC),
+                    period_end=datetime(2026, 6, 8, tzinfo=UTC),
+                )
+                cycle_id = cycle.id
+
+        async def _boom(**kwargs):
+            raise RuntimeError("ingestion blew up")
+
+        monkeypatch.setattr(ingestion_runner, "run_ingestion", _boom)
+
+        # Final attempt (job_try == max_tries): transient error re-raises AND dead-letters,
+        # and because cycle_id is threaded, the cycle is marked failed.
+        ctx = {
+            "settings": auth_app.state.settings,
+            "session_factory": factory,
+            "redis": None,
+            "dispatcher": auth_app.state.dispatcher,
+            "llm": None,
+            "job_try": 3,
+            "max_tries": 3,
+            "first_failed_at": datetime.now(UTC),
+        }
+        with pytest.raises(RuntimeError, match="ingestion blew up"):
+            await task_run_ingestion(
+                ctx,
+                run_id=999999,
+                client_id=client.id,
+                watchlist_id=wl_id,
+                cycle_id=cycle_id,
+            )
+
+        from app.scheduling.models import WatchlistCycle
+
+        async with factory() as session:
+            failed = await session.get(WatchlistCycle, cycle_id)
+        assert failed.status == "failed"
+        assert failed.failure_stage == "ingestion"
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # T040: US3 dead-letter visibility
 # ─────────────────────────────────────────────────────────────────────────────

@@ -83,15 +83,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     arq = await create_pool(arq_redis_settings)
 
-    # Prod guard: jobs_inline must be False in production (SC-008).
-    if settings.jobs_inline:
-        import os
-
-        if not os.environ.get("PANTERA_DEV_INLINE"):
-            raise RuntimeError(
-                "jobs_inline=True is not allowed in production; "
-                "set PANTERA_DEV_INLINE=1 to enable in dev/test"
-            )
+    # Prod guard: jobs_inline must be False in production (SC-008). Requires an explicit
+    # dev/test acknowledgement (settings.dev_inline_ack, env DEV_INLINE_ACK) so inline mode
+    # can never be enabled by accident in production.
+    if settings.jobs_inline and not settings.dev_inline_ack:
+        raise RuntimeError(
+            "jobs_inline=True is not allowed in production; "
+            "set DEV_INLINE_ACK=1 to enable in dev/test"
+        )
 
     app.state.settings = settings
     app.state.engine = engine

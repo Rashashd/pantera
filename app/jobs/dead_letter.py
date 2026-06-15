@@ -44,10 +44,15 @@ async def record(
     Deliberately avoids storing exception messages that may carry PII (FR-011).
     error_summary is kept to ≤200 chars and is never the full traceback.
     """
+    from app.jobs.retry import PermanentJobError
     from app.scheduling.models import DeadLetter
 
     error_class = type(exc).__name__
-    error_summary = str(exc)[:200] if exc else None
+    # FR-011: never persist arbitrary exception text — it may embed clinical/PII payload from
+    # the failing job. Only PermanentJobError messages are author-controlled (validation /
+    # business-rule strings) and safe to store; everything else keeps class-only. The full
+    # error (with exc_info) still reaches the structured worker logs for debugging.
+    error_summary = str(exc)[:200] if isinstance(exc, PermanentJobError) else None
 
     dl = DeadLetter(
         job_name=job_name,
