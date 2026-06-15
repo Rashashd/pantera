@@ -181,7 +181,11 @@ the admin dashboard surfaces the failure on a failed-jobs card.
 
 - **FR-001**: The system MUST execute all pipeline stages — ingestion, index build, triage, expedited
   drafting, reviewer-rejection redraft, and batch consolidation — as durable queued jobs processed by a
-  dedicated worker, rather than as in-process background tasks attached to a web request.
+  dedicated worker, rather than as in-process background tasks attached to a web request. This includes the
+  **manual `consolidate-batch` endpoint**, which today runs the consolidation **inline in the request**
+  (blocking on the drafting agent); it MUST be converted to enqueue the consolidation job and return `202`
+  like the other manual triggers. (Changing it from a synchronous report response to `202` is a
+  cross-spec UI concern — see the frontend forward-dependency ledger.)
 - **FR-002**: Each durable job MUST survive a restart of the web and/or worker process: a job that was
   queued or in progress before a restart MUST be picked up and run to completion afterward.
 - **FR-002a**: If the broker is unreachable **at enqueue time**, the enqueue MUST fail visibly — a
@@ -266,15 +270,21 @@ the admin dashboard surfaces the failure on a failed-jobs card.
 - **FR-018**: A stage failure within an automated cycle MUST NOT cause the cycle to be marked complete;
   the failure MUST be recorded (per FR-009/FR-010) and the cycle marked `failed` (recording the stage at
   which it failed) in an operator-visible state.
-- **FR-018a**: A `failed` cycle MUST be **excluded from auto-scheduling** — the scheduler MUST NOT
-  automatically re-run or advance it on a later tick (the per-stage job retry budget of FR-007 is the only
-  automatic retry). Due-ness advances only on a `completed` cycle, so a failed cycle neither silently
-  re-runs nor permanently blocks the watchlist.
-- **FR-018b**: An operator MUST be able to recover a `failed` cycle using the manual on-demand triggers of
-  FR-019 — **resume** the failed stage (idempotent re-run that continues the chain without duplicating
-  prior stages), **restart** a fresh cycle, or **abandon** it (close the failed cycle so the watchlist
-  returns to normal cadence scheduling). A one-click in-UI cycle-replay console is out of scope (see
-  Out of Scope) — recovery uses the existing idempotent manual triggers.
+- **FR-018a**: A watchlist whose **latest cycle is `failed` and not yet resolved** MUST be **excluded from
+  auto-scheduling**: the due-selection MUST treat such a watchlist as NOT due and the scheduler MUST NOT
+  start, re-run, or advance a cycle for it on any later tick (the per-stage job retry budget of FR-007 is
+  the only automatic retry). This exclusion is in addition to the in-progress guard (FR-017): a watchlist
+  is due only when its latest cycle is `completed` (or none exists) **and** there is no open `in_progress`
+  **and** no unresolved `failed` cycle. (Note: keying due-ness on the last `completed` cycle alone is
+  insufficient — a `failed` cycle is not `completed`, so without this explicit exclusion the watchlist
+  would wrongly appear due and auto-restart.)
+- **FR-018b**: An operator MUST be able to recover a `failed` cycle: **resume** the failed stage via the
+  existing idempotent manual trigger (re-run that continues the chain without duplicating prior stages),
+  **restart** a fresh cycle via the manual trigger, or **abandon** it — an explicit action that marks the
+  failed cycle **resolved** so the watchlist is no longer excluded and returns to normal cadence scheduling
+  at its next interval. Resume and restart, by creating a new in_progress/completed cycle, also clear the
+  exclusion. A one-click in-UI cycle-replay console is out of scope (see Out of Scope) — recovery uses the
+  existing idempotent manual triggers plus the abandon/resolve action.
 - **FR-019**: Manual, on-demand triggering of each stage MUST remain available alongside automated
   scheduling and MUST be subject to the same idempotency and single-in-flight protections.
 
@@ -332,7 +342,8 @@ the admin dashboard surfaces the failure on a failed-jobs card.
 
 - **FR-024**: This feature MUST NOT bypass or weaken the human-in-the-loop approval gate. Automated
   cycles may draft and consolidate reports, but a report still requires reviewer approval and nothing is
-  sent or delivered as a result of automation.
+  sent or delivered as a result of automation. This invariant MUST be covered by an explicit regression
+  test (an automated cycle never transitions a report to approved/sent).
 
 ### Key Entities *(include if feature involves data)*
 
