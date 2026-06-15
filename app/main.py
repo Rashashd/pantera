@@ -1,6 +1,7 @@
 """FastAPI application factory: attaches the lifespan and registers routers."""
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -12,6 +13,7 @@ from app.auth.routes_staff import router as staff_router
 from app.clients.routes_client_users import router as client_users_router
 from app.clients.routes_clients import router as clients_router
 from app.clients.routes_watchlists import router as watchlists_router
+from app.core.config import get_settings
 from app.core.lifespan import lifespan
 from app.embedding.routes import router as embedding_router
 from app.ingestion.routes_documents import router as documents_router
@@ -53,6 +55,16 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
     add_security_headers(app)  # baseline HSTS / frame / nosniff / referrer / CSP (FR-010)
+    # CORS so the browser SPA (separate origin) can call the API. Added last → outermost,
+    # so it answers preflight OPTIONS before auth/rate-limit. Bearer tokens (no cookies) ⇒
+    # credentials not required. Origins are config-driven (Settings.cors_allow_origins).
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=get_settings().cors_allow_origins,
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     return app
 
 

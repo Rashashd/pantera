@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     sentry_dsn: str = ""  # non-secret DSN; empty disables Sentry
     auth_token_ttl_seconds: int = 28800  # access-token lifetime ~8h (spec 4b FR-019)
+    # Browser origins allowed to call the API (the SPA, spec 10). The SPA and API are
+    # separate origins, so CORS is required for any browser request to succeed. Override
+    # per environment (JSON list in env CORS_ALLOW_ORIGINS) with the real SPA origin(s).
+    cors_allow_origins: list[str] = ["http://localhost:5173"]
 
     # --- Secret fields: initialized empty, populated from Vault at startup ---
     database_url: str = ""

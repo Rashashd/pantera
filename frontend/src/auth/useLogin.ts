@@ -2,7 +2,6 @@ import { useMutation } from "@tanstack/react-query";
 import { apiClient } from "@/api/client";
 import { UserSchema } from "@/api/schemas";
 import { useAuth } from "./AuthContext";
-import { get } from "@/api/client";
 
 interface LoginForm {
   username: string;
@@ -27,8 +26,11 @@ export function useLogin() {
         body: formData.toString(),
       });
 
-      // Fetch current user to get role/scope
-      const rawUser = await get<unknown>("/auth/users/me");
+      // Fetch current user to get role/scope. The token isn't in storage yet (setAuth runs
+      // below), so attach it explicitly — otherwise this request is unauthenticated (401).
+      const rawUser = await apiClient<unknown>("/auth/users/me", {
+        headers: { Authorization: `Bearer ${tokenResp.access_token}` },
+      });
       const user = UserSchema.parse(rawUser);
 
       setAuth(tokenResp.access_token, user);
