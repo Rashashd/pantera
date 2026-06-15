@@ -378,7 +378,7 @@ async def authed_reviewer_client(client, make_staff_user):
 
 @pytest_asyncio.fixture
 async def authed_admin_client(client, make_staff_user):
-    """An ASGI client pre-authenticated as an admin (staff) — for require_admin routes (usage/metrics)."""
+    """An ASGI client pre-authenticated as an admin (staff) — for require_admin routes."""
     user = await make_staff_user(role="admin")
     token = await login_token(client, user.email)
     client.headers["Authorization"] = f"Bearer {token}"
