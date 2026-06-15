@@ -14,6 +14,7 @@ from app.auth.models import User
 from app.auth.schemas import UserType
 from app.clients.models import Client
 from app.core.dependencies import get_session
+from app.ingestion.models import DocumentWatchlist
 from app.reports.models import Report, ReportFinding
 from app.reports.schemas import (
     PortalReportDetail,
@@ -27,6 +28,29 @@ router = APIRouter(prefix="/clients/{client_id}", tags=["portal"])
 _get_client_read = acting_client(allow_suspended=True)
 
 _PORTAL_STATUSES = {"approved", "sent", "delivered"}
+
+
+async def _resolve_owning_watchlist(
+    session: AsyncSession, report_id: int, client_id: int
+) -> int | None:
+    """Attribute a report lacking a direct watchlist_id to a single owning watchlist (FR-030).
+
+    Resolves via report_findings → findings.document_id → document_watchlists, picking the
+    lowest watchlist_id deterministically (consistent with spec-9 report-once attribution).
+    """
+    return (
+        await session.execute(
+            select(DocumentWatchlist.watchlist_id)
+            .join(Finding, Finding.document_id == DocumentWatchlist.document_id)
+            .join(ReportFinding, ReportFinding.finding_id == Finding.id)
+            .where(
+                ReportFinding.report_id == report_id,
+                DocumentWatchlist.client_id == client_id,
+            )
+            .order_by(DocumentWatchlist.watchlist_id.asc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
 
 
 def _delivery_status(status: str) -> str:
@@ -100,40 +124,50 @@ async def list_portal_reports(
     client: Client = Depends(_get_client_read),
     session: AsyncSession = Depends(get_session),
 ) -> list[PortalReportSummary]:
-    """List approved+sent reports for the client portal, optionally filtered by watchlist."""
-    q = (
-        select(Report)
-        .where(
-            Report.client_id == client.id,
-            Report.status.in_(list(_PORTAL_STATUSES)),
-        )
-        .order_by(Report.created_at.desc())
-    )
-    if watchlist_id is not None:
-        q = q.where(Report.watchlist_id == watchlist_id)
+    """List approved+sent reports for the client portal, optionally filtered by watchlist.
 
-    rows = (await session.execute(q)).scalars().all()
-    return [
-        PortalReportSummary(
-            **{
-                k: getattr(r, k)
-                for k in (
-                    "id",
-                    "report_type",
-                    "status",
-                    "watchlist_id",
-                    "corroboration_count",
-                    "sla_deadline",
-                    "cycle_period_start",
-                    "cycle_period_end",
-                    "created_at",
-                    "updated_at",
+    Reports without a direct watchlist_id (e.g. expedited) are attributed to a single owning
+    watchlist via document_watchlists (FR-030) so they appear under exactly one watchlist page.
+    """
+    rows = (
+        (
+            await session.execute(
+                select(Report)
+                .where(
+                    Report.client_id == client.id,
+                    Report.status.in_(list(_PORTAL_STATUSES)),
                 )
-            },
-            delivery_status=_delivery_status(r.status),
+                .order_by(Report.created_at.desc())
+            )
         )
-        for r in rows
-    ]
+        .scalars()
+        .all()
+    )
+
+    summaries: list[PortalReportSummary] = []
+    for r in rows:
+        effective_wl = r.watchlist_id
+        if effective_wl is None:
+            effective_wl = await _resolve_owning_watchlist(session, r.id, client.id)
+        # Apply the watchlist filter against the *effective* (possibly resolved) watchlist.
+        if watchlist_id is not None and effective_wl != watchlist_id:
+            continue
+        summaries.append(
+            PortalReportSummary(
+                id=r.id,
+                report_type=r.report_type,
+                status=r.status,
+                watchlist_id=effective_wl,
+                corroboration_count=r.corroboration_count,
+                sla_deadline=r.sla_deadline,
+                cycle_period_start=r.cycle_period_start,
+                cycle_period_end=r.cycle_period_end,
+                created_at=r.created_at,
+                updated_at=r.updated_at,
+                delivery_status=_delivery_status(r.status),
+            )
+        )
+    return summaries
 
 
 @router.get(

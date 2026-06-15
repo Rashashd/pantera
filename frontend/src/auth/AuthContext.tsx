@@ -26,7 +26,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>(() => {
     const token = localStorage.getItem(TOKEN_KEY);
     const raw = localStorage.getItem(USER_KEY);
-    const user = raw ? (JSON.parse(raw) as User) : null;
+    let user: User | null = null;
+    try {
+      user = raw ? (JSON.parse(raw) as User) : null;
+    } catch {
+      // Corrupt storage — clear it rather than white-screening the app on load.
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+      return { token: null, user: null };
+    }
     return { token, user };
   });
 
