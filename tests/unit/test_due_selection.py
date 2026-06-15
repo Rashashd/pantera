@@ -6,7 +6,12 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.scheduling.due import cadence_interval_end, compute_period, is_due
+from app.scheduling.due import (
+    cadence_interval_end,
+    cadence_seconds,
+    compute_period,
+    is_due,
+)
 
 # ── cadence_interval_end ──────────────────────────────────────────────────────
 
@@ -115,3 +120,24 @@ def test_compute_period_monthly():
     start, end = compute_period(cadence="monthly", last_completed_at=last, now=now)
     assert start == last
     assert end == datetime(2026, 6, 1, tzinfo=UTC)
+
+
+def test_compute_period_first_cycle_default_now():
+    """No explicit now → uses datetime.now(UTC); window spans one cadence interval."""
+    start, end = compute_period(cadence="daily", last_completed_at=None)
+    assert (end - start) == timedelta(days=1)
+
+
+# ── cadence_seconds (used by compute_period for the first-cycle look-back) ─────
+
+
+def test_cadence_seconds_all_cadences():
+    assert cadence_seconds("daily") == 86400.0
+    assert cadence_seconds("weekly") == 7 * 86400.0
+    assert cadence_seconds("biweekly") == 14 * 86400.0
+    assert cadence_seconds("monthly") == 30 * 86400.0
+
+
+def test_cadence_seconds_unknown_raises():
+    with pytest.raises(ValueError, match="Unknown cadence"):
+        cadence_seconds("yearly")

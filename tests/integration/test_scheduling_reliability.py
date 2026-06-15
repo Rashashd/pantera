@@ -475,6 +475,20 @@ class _DummyMS:
         return False
 
 
+def _basic_ctx(auth_app) -> dict:
+    """A minimal worker ctx for invoking task functions directly (inline-style)."""
+    return {
+        "settings": auth_app.state.settings,
+        "session_factory": auth_app.state.session_factory,
+        "redis": None,
+        "dispatcher": auth_app.state.dispatcher,
+        "llm": None,
+        "job_try": 1,
+        "max_tries": 3,
+        "first_failed_at": datetime.now(UTC),
+    }
+
+
 async def _latest_cycle(factory, watchlist_id: int):
     """Return the most-recent WatchlistCycle row for a watchlist."""
     from sqlalchemy import select
@@ -616,6 +630,296 @@ class TestCycleChain:
             failed = await session.get(WatchlistCycle, cycle_id)
         assert failed.status == "failed"
         assert failed.failure_stage == "ingestion"
+
+
+class TestSchedulerWorkerAndTaskWrappers:
+    """Coverage for the cron tick, worker bootstrap, thin task wrappers, and budget gate."""
+
+    @pytest.mark.asyncio
+    async def test_worker_startup_shutdown(self):
+        """worker.startup builds engine/redis/dispatcher/session_factory; shutdown disposes them."""
+        from worker import worker as w
+
+        ctx: dict = {}
+        await w.startup(ctx)
+        try:
+            assert ctx["session_factory"] is not None
+            assert ctx["dispatcher"] is not None
+            assert ctx["engine"] is not None
+            assert ctx["redis"] is not None
+        finally:
+            await w.shutdown(ctx)
+
+    @pytest.mark.asyncio
+    async def test_make_redis_settings(self):
+        """_make_redis_settings derives RedisSettings from the configured URL (TLS-capable)."""
+        from worker.worker import _make_redis_settings
+
+        assert _make_redis_settings() is not None
+
+    @pytest.mark.asyncio
+    async def test_scheduler_tick_enqueues_due_watchlist(self, auth_app, make_client, monkeypatch):
+        """scheduler_tick enqueues exactly one task_cycle_start per due watchlist (FR-013)."""
+        import app.jobs.scheduler as scheduler_mod
+        from app.jobs.scheduler import scheduler_tick
+
+        client = await make_client()
+        factory = auth_app.state.session_factory
+        wl_id = await _make_watchlist_with_item(factory, client.id)
+
+        enqueued: list[dict] = []
+
+        async def _record(name, *, job_id, _ctx=None, app_state=None, **kwargs):
+            enqueued.append({"name": name, "job_id": job_id, **kwargs})
+
+        monkeypatch.setattr(scheduler_mod, "enqueue", _record)
+
+        ctx = {
+            "settings": auth_app.state.settings,
+            "session_factory": factory,
+            "redis": None,
+            "dispatcher": auth_app.state.dispatcher,
+            "llm": None,
+        }
+        await scheduler_tick(ctx)
+
+        mine = [e for e in enqueued if e.get("watchlist_id") == wl_id]
+        assert len(mine) == 1
+        assert mine[0]["name"] == "task_cycle_start"
+
+    @pytest.mark.asyncio
+    async def test_task_expedited_invokes_runner(self, auth_app, monkeypatch):
+        """task_expedited wraps reports.runner.draft_expedited with the worker context."""
+        import app.reports.runner as reports_runner
+        from app.jobs.tasks import task_expedited
+
+        seen: list[int] = []
+
+        async def _stub(finding_id, app_state):
+            seen.append(finding_id)
+
+        monkeypatch.setattr(reports_runner, "draft_expedited", _stub)
+        await task_expedited(_basic_ctx(auth_app), finding_id=4242, revision=0)
+        assert seen == [4242]
+
+    @pytest.mark.asyncio
+    async def test_task_redraft_invokes_runner(self, auth_app, monkeypatch):
+        """task_redraft wraps reports.runner.redraft_report with the worker context."""
+        import app.reports.runner as reports_runner
+        from app.jobs.tasks import task_redraft
+
+        seen: list[tuple] = []
+
+        async def _stub(*, report_id, comment, app_state):
+            seen.append((report_id, comment))
+
+        monkeypatch.setattr(reports_runner, "redraft_report", _stub)
+        await task_redraft(_basic_ctx(auth_app), report_id=7, revision=2, comment="please fix")
+        assert seen == [(7, "please fix")]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "policy,reason",
+        [("pause", "budget_pause"), ("critical_only", "budget_critical_only")],
+    )
+    async def test_consolidate_budget_gate_skips_drafting(
+        self, auth_app, make_client, policy, reason
+    ):
+        """Over-cap cycle with pause/critical_only completes with skipped_reason (FR-019)."""
+        from decimal import Decimal
+
+        from sqlalchemy import update
+
+        from app.clients.models import Watchlist
+        from app.clients.watchlists import record_spend
+        from app.jobs.tasks import task_consolidate
+        from app.scheduling.models import WatchlistCycle
+        from app.scheduling.service import CycleService
+
+        client = await make_client()
+        factory = auth_app.state.session_factory
+        wl_id = await _make_watchlist_with_item(factory, client.id)
+
+        async with factory() as session:
+            async with session.begin():
+                await session.execute(
+                    update(Watchlist)
+                    .where(Watchlist.id == wl_id)
+                    .values(budget_amount=Decimal("1.00"), budget_exceeded_policy=policy)
+                )
+                wl = await session.get(Watchlist, wl_id)
+                await record_spend(session, wl, Decimal("10.00"))
+                cycle = await CycleService.start_cycle(
+                    session,
+                    watchlist_id=wl_id,
+                    client_id=client.id,
+                    period_start=datetime(2026, 6, 1, tzinfo=UTC),
+                    period_end=datetime(2026, 6, 8, tzinfo=UTC),
+                )
+                cycle_id = cycle.id
+
+        await task_consolidate(
+            _basic_ctx(auth_app),
+            watchlist_id=wl_id,
+            client_id=client.id,
+            cycle_period_start="2026-06-01T00:00:00+00:00",
+            cycle_period_end="2026-06-08T00:00:00+00:00",
+            cycle_id=cycle_id,
+        )
+
+        async with factory() as session:
+            done = await session.get(WatchlistCycle, cycle_id)
+        assert done.status == "completed"
+        assert done.skipped_reason == reason
+
+
+class TestCycleServiceEdges:
+    """Coverage for CycleService validation, provenance links, and no-op guards."""
+
+    @pytest.mark.asyncio
+    async def test_start_cycle_validation_raises(self, auth_app, make_client):
+        """start_cycle raises for inactive and for empty (no-item) watchlists."""
+        from app.clients.models import Watchlist
+        from app.scheduling.service import CycleService
+
+        client = await make_client()
+        factory = auth_app.state.session_factory
+
+        async with factory() as session:
+            async with session.begin():
+                inactive = Watchlist(
+                    client_id=client.id,
+                    name=f"WL-{uuid.uuid4().hex[:8]}",
+                    cadence="weekly",
+                    is_active=False,
+                    severity_threshold="serious",
+                )
+                empty = Watchlist(
+                    client_id=client.id,
+                    name=f"WL-{uuid.uuid4().hex[:8]}",
+                    cadence="weekly",
+                    is_active=True,
+                    severity_threshold="serious",
+                )
+                session.add_all([inactive, empty])
+                await session.flush()
+                inactive_id, empty_id = inactive.id, empty.id
+
+        for bad_id in (inactive_id, empty_id):
+            with pytest.raises(ValueError):
+                async with factory() as session:
+                    async with session.begin():
+                        await CycleService.start_cycle(
+                            session,
+                            watchlist_id=bad_id,
+                            client_id=client.id,
+                            period_start=datetime(2026, 6, 1, tzinfo=UTC),
+                            period_end=datetime(2026, 6, 8, tzinfo=UTC),
+                        )
+
+    @pytest.mark.asyncio
+    async def test_abandon_non_failed_raises_and_missing_ids_noop(self, auth_app, make_client):
+        """abandon on a non-failed cycle raises; missing-id transitions return None."""
+        from app.scheduling.service import CycleService
+
+        client = await make_client()
+        factory = auth_app.state.session_factory
+        wl_id = await _make_watchlist_with_item(factory, client.id)
+
+        async with factory() as session:
+            async with session.begin():
+                cycle = await CycleService.start_cycle(
+                    session,
+                    watchlist_id=wl_id,
+                    client_id=client.id,
+                    period_start=datetime(2026, 6, 1, tzinfo=UTC),
+                    period_end=datetime(2026, 6, 8, tzinfo=UTC),
+                )
+                cid = cycle.id
+
+        with pytest.raises(ValueError):
+            async with factory() as session:
+                async with session.begin():
+                    await CycleService.abandon_cycle(session, cid)  # in_progress, not failed
+
+        async with factory() as session:
+            async with session.begin():
+                assert await CycleService.mark_completed(session, 99_999_999) is None
+                assert await CycleService.mark_failed(session, 99_999_999, "x") is None
+                assert await CycleService.abandon_cycle(session, 99_999_999) is None
+
+    @pytest.mark.asyncio
+    async def test_set_index_build_run_links_provenance(self, auth_app, make_client):
+        """set_index_build_run records the index run id on the cycle for provenance."""
+        from app.embedding.service import IndexBuildService
+        from app.scheduling.models import WatchlistCycle
+        from app.scheduling.service import CycleService
+
+        client = await make_client()
+        factory = auth_app.state.session_factory
+        wl_id = await _make_watchlist_with_item(factory, client.id)
+
+        async with factory() as session:
+            async with session.begin():
+                cycle = await CycleService.start_cycle(
+                    session,
+                    watchlist_id=wl_id,
+                    client_id=client.id,
+                    period_start=datetime(2026, 6, 1, tzinfo=UTC),
+                    period_end=datetime(2026, 6, 8, tzinfo=UTC),
+                )
+                cid = cycle.id
+                run, _created = await IndexBuildService.create_run(
+                    session, client.id, watchlist_id=wl_id
+                )
+                rid = run.id
+                await CycleService.set_index_build_run(session, cid, rid)
+
+        async with factory() as session:
+            linked = await session.get(WatchlistCycle, cid)
+        assert linked.index_build_run_id == rid
+
+
+class TestCycleEndpoints:
+    """Coverage for the cycle list + abandon HTTP endpoints (staff-authed)."""
+
+    @pytest.mark.asyncio
+    async def test_list_and_abandon_cycle(self, auth_app, make_client, make_staff_user, client):
+        """GET cycles lists them; POST .../abandon resolves a failed cycle (FR-018b)."""
+        from app.scheduling.service import CycleService
+
+        owner = await make_client()
+        factory = auth_app.state.session_factory
+        wl_id = await _make_watchlist_with_item(factory, owner.id)
+
+        async with factory() as session:
+            async with session.begin():
+                cycle = await CycleService.start_cycle(
+                    session,
+                    watchlist_id=wl_id,
+                    client_id=owner.id,
+                    period_start=datetime(2026, 6, 1, tzinfo=UTC),
+                    period_end=datetime(2026, 6, 8, tzinfo=UTC),
+                )
+                cid = cycle.id
+                await CycleService.mark_failed(session, cid, "ingestion")
+
+        staff = await make_staff_user(role="admin")
+        resp = await client.post(
+            "/auth/jwt/login", data={"username": staff.email, "password": "Abcdef1!"}
+        )
+        token = resp.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.get(f"/clients/{owner.id}/watchlists/{wl_id}/cycles", headers=headers)
+        assert resp.status_code == 200
+        assert any(c["id"] == cid for c in resp.json())
+
+        resp = await client.post(
+            f"/clients/{owner.id}/watchlists/{wl_id}/cycles/{cid}/abandon", headers=headers
+        )
+        assert resp.status_code == 200
+        assert resp.json()["resolved_at"] is not None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
