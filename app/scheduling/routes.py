@@ -103,14 +103,13 @@ async def abandon_cycle(
     """Operator: abandon a failed cycle to allow rescheduling (FR-018b)."""
     from app.scheduling.service import CycleService
 
-    async with session.begin():
-        cycle = await session.get(WatchlistCycle, cycle_id)
-        if cycle is None or cycle.client_id != client_id or cycle.watchlist_id != watchlist_id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="CYCLE_NOT_FOUND")
-        try:
-            cycle = await CycleService.abandon_cycle(session, cycle_id)
-        except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    cycle = await session.get(WatchlistCycle, cycle_id)
+    if cycle is None or cycle.client_id != client_id or cycle.watchlist_id != watchlist_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="CYCLE_NOT_FOUND")
+    try:
+        cycle = await CycleService.abandon_cycle(session, cycle_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     return CycleOut.model_validate(cycle)
 
@@ -146,13 +145,12 @@ async def resolve_dead_letter(
     """Staff: mark a dead-letter record resolved (operator-acknowledged)."""
     from datetime import UTC
 
-    async with session.begin():
-        row = await session.get(DeadLetter, dead_letter_id)
-        if row is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
-        if row.resolved_at is not None:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="ALREADY_RESOLVED")
-        row.resolved_at = datetime.now(UTC)
-        await session.flush()
+    row = await session.get(DeadLetter, dead_letter_id)
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
+    if row.resolved_at is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="ALREADY_RESOLVED")
+    row.resolved_at = datetime.now(UTC)
+    await session.flush()
 
     return DeadLetterOut.model_validate(row)

@@ -63,6 +63,7 @@ async def _make_watchlist_with_item(factory, client_id: int, cadence: str = "wee
                 client_id=client_id,
                 item_type="drug",
                 value="aspirin",
+                normalized_value="aspirin",
             )
             session.add(item)
             await session.flush()
@@ -455,8 +456,12 @@ class TestCycleLifecycle:
         from app.reports.consolidation import consolidate_batch
 
         src = inspect.getsource(consolidate_batch)
-        assert (
-            "approved" not in src.lower() or "ReportStatus.APPROVED" not in src
+        # consolidate_batch may reference APPROVED in a filter (e.g. notin_(...)), but
+        # must never assign it. Check that no assignment pattern appears.
+        import re
+
+        assert not re.search(
+            r"status\s*=\s*ReportStatus\.APPROVED", src
         ), "consolidate_batch must not set status to approved — HITL invariant (FR-024)"
 
 
