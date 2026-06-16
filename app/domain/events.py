@@ -295,3 +295,32 @@ class WatchlistBudgetThresholdReached(DomainEvent):
 
     watchlist_id: int = 0
     state: str = ""  # "warning" | "exceeded"
+
+
+# --- Security hardening events (spec 12); auto-audited via DomainEvent.__subclasses__.
+# Payloads carry reason CODES only — NEVER document text or PII (asdict() is persisted). ---
+
+
+@dataclass(frozen=True, slots=True)
+class GuardrailRefused(DomainEvent):
+    """A guardrails rail blocked a guarded LLM call or document intake (FR-005)."""
+
+    rail: str = ""  # "injection" | "jailbreak" | "topic_scope" | "cross_client"
+    call_site: str = ""  # "triage" | "agent" | "intake"
+    direction: str = ""  # "input" | "output"
+
+
+@dataclass(frozen=True, slots=True)
+class GuardrailUnavailable(DomainEvent):
+    """The guardrails sidecar was unreachable/errored → fail-safe taken (FR-006)."""
+
+    call_site: str = ""  # "triage" | "agent" | "intake"
+    fail_action: str = ""  # "escalate" | "quarantine"
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentQuarantined(DomainEvent):
+    """Intake guard blocked/could-not-run → document held out of indexing+triage (FR-006a)."""
+
+    document_id: int = 0
+    reason: str = ""  # non-PII reason code

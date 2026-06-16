@@ -48,9 +48,9 @@ jobs:
       - name: Sync dependencies (dev + modelserver groups; exclude heavy training group)
         run: uv sync --group modelserver
       - name: Ruff lint (incl. ASYNC rules for FR-018)
-        run: uv run ruff check app worker tests
+        run: uv run ruff check app worker guardrails tests
       - name: Black format check
-        run: uv run black --check app worker tests
+        run: uv run black --check app worker guardrails tests
       - name: Type-check (advisory)
         run: uv run mypy app worker || true
       - name: Start infra (Vault + Postgres + Redis)
@@ -66,16 +66,22 @@ jobs:
               path="pantera/secrets",
               secret={
                   "database_url": "postgresql+asyncpg://pantera:pantera@localhost:5432/pantera",
+                  # spec 12: least-priv runtime DSN (pantera_app role, created in the bootstrap step).
+                  "app_database_url": "postgresql+asyncpg://pantera_app:pantera_app@localhost:5432/pantera",
                   "redis_url": "redis://localhost:6379/0",
                   "anthropic_api_key": "ci-test-key",
                   # spec 2: required at boot; signs JWTs in the auth integration tests.
                   "auth_jwt_secret": "ci-test-jwt-secret",
                   # spec 5: modelserver credential (modelserver boots from Vault or env var)
                   "modelserver_token": "ci-test-token",  # gitleaks:allow
+                  # spec 12: guardrails sidecar credential (promoted to _REQUIRED_SECRETS).
+                  "guardrails_token": "ci-test-guardrails-token",  # gitleaks:allow
               },
           )
           print("secrets written")
           PY
+      - name: Create least-privilege pantera_app role (spec 12; bootstrap, not a migration)
+        run: docker compose exec -T postgres psql -U pantera -d pantera -f - < scripts/db/init-pantera-app-role.sql
       - name: Apply migrations
         run: uv run alembic upgrade head
       - name: Tests with coverage (80% overall gate)
@@ -107,6 +113,10 @@ jobs:
         run: PYTHONPATH=. uv run python eval/classifier/run_eval.py
       - name: Sync app deps for triage eval (no torch/training group)
         run: uv sync --no-group training
+      - name: Guardrails red-team gate (block-rate=1.0, false-refusal=0, SC-001/spec-12)
+        run: PYTHONPATH=. uv run pytest tests/integration/test_guardrails_redteam.py -v
+      - name: Redaction gate (PII/secret leak=0, no over-redaction, SC-003/spec-12)
+        run: PYTHONPATH=. uv run pytest tests/integration/test_redaction_gate.py -v
       - name: Triage golden-set eval gate (recall>=0.90, precision>=0.75, SC-003)
         run: PYTHONPATH=. uv run pytest tests/integration/test_triage_eval.py -v
       - name: Agent tool-selection eval gate (accuracy>=0.85, SC-002)
