@@ -113,6 +113,10 @@ jobs:
         run: PYTHONPATH=. uv run python eval/classifier/run_eval.py
       - name: Sync app deps for triage eval (no torch/training group)
         run: uv sync --no-group training
+      - name: Guardrails red-team gate (block-rate=1.0, false-refusal=0, SC-001/spec-12)
+        run: PYTHONPATH=. uv run pytest tests/integration/test_guardrails_redteam.py -v
+      - name: Redaction gate (PII/secret leak=0, no over-redaction, SC-003/spec-12)
+        run: PYTHONPATH=. uv run pytest tests/integration/test_redaction_gate.py -v
       - name: Triage golden-set eval gate (recall>=0.90, precision>=0.75, SC-003)
         run: PYTHONPATH=. uv run pytest tests/integration/test_triage_eval.py -v
       - name: Agent tool-selection eval gate (accuracy>=0.85, SC-002)

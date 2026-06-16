@@ -23,12 +23,12 @@ description: "Task list for 012-security-hardening implementation"
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Add Presidio deps (`presidio-analyzer`, `presidio-anonymizer`, `en_core_web_sm` model) to `pyproject.toml` main deps and a new `guardrails` uv group (lean, torch-free); run `uv lock`. Verify `en_core_web_sm` install is torch-free (research R3).
-- [ ] T002 [P] Add Settings fields in `app/core/config.py`: `guardrails_url: str = "http://guardrails:8002"`, `app_database_url: str = ""`, `redaction_enabled: bool = True`, `guardrails_enabled: bool = True` (do NOT re-add existing `guardrails_token`/`tracing_enabled`). **`guardrails_enabled`/`redaction_enabled` are non-production/test-only kill-switches (FR-003/FR-014a): they MUST NOT bypass the mandatory boundary in production.** Default `True`; the production guard lives in T002a.
-- [ ] T002a In `app/core/startup.py` (after secrets load, alongside the existing required-secrets check): refuse to boot when `guardrails_enabled` or `redaction_enabled` is `False` in a production environment (gate on the existing prod/env signal — grep `config.py`/`startup.py` for an `environment`/`is_production`/`ENV` marker; if none exists, key off `tracing_enabled`'s prod convention or add a single `environment` Setting). Non-prod may disable for test isolation. Implements FR-003 / FR-014a (resolves analyze C1/C2).
-- [ ] T003 [P] In `app/core/startup.py`: add `app_database_url` to `_REQUIRED_SECRETS` (+ `guardrails_token`), and `settings.app_database_url = data.get("app_database_url", "")` in `load_secrets_from_vault`.
-- [ ] T004 Wire the two newly-required secrets (`app_database_url`, `guardrails_token`) into `scripts/write_secrets.py`, the inline secret writer in `.github/workflows/ci.yml`, and `docker-compose.yml` (spec-2 lesson: missing CI writer entry fails alembic/tests fast).
-- [ ] T005 [P] Add a `security:` thresholds block to `eval_thresholds.yaml` (`redaction_leak_max: 0`, `guardrail_block_rate_min: 1.0`, `guardrail_false_refusal_max: 0`).
+- [x] T001 Add Presidio deps (`presidio-analyzer`, `presidio-anonymizer`, `en_core_web_sm` model) to `pyproject.toml` main deps and a new `guardrails` uv group (lean, torch-free); run `uv lock`. Verify `en_core_web_sm` install is torch-free (research R3).
+- [x] T002 [P] Add Settings fields in `app/core/config.py`: `guardrails_url: str = "http://guardrails:8002"`, `app_database_url: str = ""`, `redaction_enabled: bool = True`, `guardrails_enabled: bool = True` (do NOT re-add existing `guardrails_token`/`tracing_enabled`). **`guardrails_enabled`/`redaction_enabled` are non-production/test-only kill-switches (FR-003/FR-014a): they MUST NOT bypass the mandatory boundary in production.** Default `True`; the production guard lives in T002a.
+- [x] T002a In `app/core/startup.py` (after secrets load, alongside the existing required-secrets check): refuse to boot when `guardrails_enabled` or `redaction_enabled` is `False` in a production environment (gate on the existing prod/env signal — grep `config.py`/`startup.py` for an `environment`/`is_production`/`ENV` marker; if none exists, key off `tracing_enabled`'s prod convention or add a single `environment` Setting). Non-prod may disable for test isolation. Implements FR-003 / FR-014a (resolves analyze C1/C2).
+- [x] T003 [P] In `app/core/startup.py`: add `app_database_url` to `_REQUIRED_SECRETS` (+ `guardrails_token`), and `settings.app_database_url = data.get("app_database_url", "")` in `load_secrets_from_vault`.
+- [x] T004 Wire the two newly-required secrets (`app_database_url`, `guardrails_token`) into `scripts/write_secrets.py`, the inline secret writer in `.github/workflows/ci.yml`, and `docker-compose.yml` (spec-2 lesson: missing CI writer entry fails alembic/tests fast).
+- [x] T005 [P] Add a `security:` thresholds block to `eval_thresholds.yaml` (`redaction_leak_max: 0`, `guardrail_block_rate_min: 1.0`, `guardrail_false_refusal_max: 0`).
 
 ---
 
@@ -36,9 +36,9 @@ description: "Task list for 012-security-hardening implementation"
 
 **⚠️ Complete before any user story.**
 
-- [ ] T006 [P] Create `app/redaction/` package skeleton (`__init__.py` + `RedactionResult`/`RedactedEntity` models per `contracts/redaction.md`).
-- [ ] T007 [P] Create `app/guardrails/` package skeleton (`__init__.py` + `GuardRequest`/`GuardResponse` schemas in `app/guardrails/schemas.py` per `contracts/guardrails-api.md`).
-- [ ] T008 Add 3 domain events to `app/domain/events.py`: `GuardrailRefused`, `GuardrailUnavailable`, `DocumentQuarantined` (match the existing `DomainEvent` dataclass shape with `actor_id`/`actor_type`/`client_id`/`target_client_id`; auto-audited via `register_audit_handlers`, `app/audit/handler.py:52` — no handler change). Payloads = reason codes only, NO PII.
+- [x] T006 [P] Create `app/redaction/` package skeleton (`__init__.py` + `RedactionResult`/`RedactedEntity` models per `contracts/redaction.md`).
+- [x] T007 [P] Create `app/guardrails/` package skeleton (`__init__.py` + `GuardRequest`/`GuardResponse` schemas in `app/guardrails/schemas.py` per `contracts/guardrails-api.md`).
+- [x] T008 Add 3 domain events to `app/domain/events.py`: `GuardrailRefused`, `GuardrailUnavailable`, `DocumentQuarantined` (match the existing `DomainEvent` dataclass shape with `actor_id`/`actor_type`/`client_id`/`target_client_id`; auto-audited via `register_audit_handlers`, `app/audit/handler.py:52` — no handler change). Payloads = reason codes only, NO PII.
 
 **Checkpoint**: packages exist, events auditable, config + secrets + thresholds in place.
 
@@ -52,18 +52,18 @@ description: "Task list for 012-security-hardening implementation"
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] Red-team gate: `tests/integration/test_guardrails_redteam.py` + golden set `tests/data/guardrails_redteam.jsonl` (injection/jailbreak/off-topic/cross-client attacks + legitimate PV controls; assert block-rate=1.0, false-refusal=0).
-- [ ] T010 [P] [US1] Unit tests for the rails engine in `tests/unit/test_guardrails_rails.py` (each rail, input vs output direction, fail-safe `rail_engine_error`).
+- [x] T009 [P] [US1] Red-team gate: `tests/integration/test_guardrails_redteam.py` + golden set `tests/data/guardrails_redteam.jsonl` (injection/jailbreak/off-topic/cross-client attacks + legitimate PV controls; assert block-rate=1.0, false-refusal=0).
+- [x] T010 [P] [US1] Unit tests for the rails engine in `tests/unit/test_guardrails_rails.py` (each rail, input vs output direction, fail-safe `rail_engine_error`).
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Build the sidecar: top-level `guardrails/` (`app.py` with `POST /guard` + `GET /health`, `core/` heuristic rails engine for injection/jailbreak/topic-scope/cross-client) + torch-free `guardrails/Dockerfile`; copy the `modelserver/` layout + `X-Service-Token` auth.
-- [ ] T012 [US1] Add the `guardrails` service to `docker-compose.yml` (port 8002, stdlib `/health` probe like modelserver `:91`, `VAULT_ADDR`/`VAULT_TOKEN`).
-- [ ] T013 [US1] Implement `app/guardrails/client.py` (`httpx.AsyncClient` + tenacity, `X-Service-Token=settings.guardrails_token`, URL `settings.guardrails_url`, retry 5xx/timeout/network only, raise `GuardrailsUnavailable`) — mirror `app/infra/modelserver_client.py` + triage `_should_retry`.
-- [ ] T014 [US1] Wire `guard(input)` + `guard(output)` around `_call_llm` in `app/triage/llm.py` (`resolve_yes_no`/`assess_valence`): block/unavailable → fail-safe (raise so caller escalates; `assess_valence` keeps its `"positive"` default); emit `GuardrailRefused`/`GuardrailUnavailable`.
-- [ ] T015 [US1] Wire `guard(output)` (and input echo-check) around `chat_model.ainvoke` in `app/agent/graph.py` `agent_node`: block/unavailable → set `escalated` so the graph ends (escalate to reviewer); emit events.
-- [ ] T016 [US1] Add intake injection scan + quarantine in `app/ingestion/` (before a fetched doc is accepted/indexed): on block/unavailable, hold the document out of indexing+triage and emit `DocumentQuarantined`; continue the cycle for other documents (FR-006a). Grep `app/ingestion/service.py` for the `Document`/`DocumentSource` persist site first.
-- [ ] T017 [US1] Sidecar secret loading (`guardrails_token`) + add the `guardrails` service to the CI workflow so the red-team gate can reach it (or import the rails engine directly in-test).
+- [x] T011 [US1] Build the sidecar: top-level `guardrails/` (`app.py` with `POST /guard` + `GET /health`, `core/` heuristic rails engine for injection/jailbreak/topic-scope/cross-client) + torch-free `guardrails/Dockerfile`; copy the `modelserver/` layout + `X-Service-Token` auth.
+- [x] T012 [US1] Add the `guardrails` service to `docker-compose.yml` (port 8002, stdlib `/health` probe like modelserver `:91`, `VAULT_ADDR`/`VAULT_TOKEN`).
+- [x] T013 [US1] Implement `app/guardrails/client.py` (`httpx.AsyncClient` + tenacity, `X-Service-Token=settings.guardrails_token`, URL `settings.guardrails_url`, retry 5xx/timeout/network only, raise `GuardrailsUnavailable`) — mirror `app/infra/modelserver_client.py` + triage `_should_retry`.
+- [x] T014 [US1] Wire `guard(input)` + `guard(output)` around `_call_llm` in `app/triage/llm.py` (`resolve_yes_no`/`assess_valence`): block/unavailable → fail-safe (raise so caller escalates; `assess_valence` keeps its `"positive"` default); emit `GuardrailRefused`/`GuardrailUnavailable`.
+- [x] T015 [US1] Wire `guard(output)` (and input echo-check) around `chat_model.ainvoke` in `app/agent/graph.py` `agent_node`: block/unavailable → set `escalated` so the graph ends (escalate to reviewer); emit events.
+- [x] T016 [US1] Add intake injection scan + quarantine in `app/ingestion/` (before a fetched doc is accepted/indexed): on block/unavailable, hold the document out of indexing+triage and emit `DocumentQuarantined`; continue the cycle for other documents (FR-006a). Grep `app/ingestion/service.py` for the `Document`/`DocumentSource` persist site first.
+- [x] T017 [US1] Sidecar secret loading (`guardrails_token`) + add the `guardrails` service to the CI workflow so the red-team gate can reach it (or import the rails engine directly in-test).
 
 **Checkpoint**: US1 independently functional — guardrails on all egress + intake, fail-safe verified, red-team gate green.
 
@@ -77,17 +77,17 @@ description: "Task list for 012-security-hardening implementation"
 
 ### Tests for User Story 2
 
-- [ ] T018 [P] [US2] Redaction gate: `tests/integration/test_redaction_gate.py` + golden set `tests/data/redaction_golden_set.jsonl` (planted PII + secret across external-LLM/log/trace/summary egress; + over-redaction control cases). **Include at least one config-derived case** (a secret/PII token planted in watchlist or custom-severity-keyword text) so FR-009a's "no egress path exempt" is tested, not just asserted by design (resolves analyze A1).
-- [ ] T019 [P] [US2] Unit tests for `redact()` + secret recognizers in `tests/unit/test_redaction.py`.
+- [x] T018 [P] [US2] Redaction gate: `tests/integration/test_redaction_gate.py` + golden set `tests/data/redaction_golden_set.jsonl` (planted PII + secret across external-LLM/log/trace/summary egress; + over-redaction control cases). **Include at least one config-derived case** (a secret/PII token planted in watchlist or custom-severity-keyword text) so FR-009a's "no egress path exempt" is tested, not just asserted by design (resolves analyze A1).
+- [x] T019 [P] [US2] Unit tests for `redact()` + secret recognizers in `tests/unit/test_redaction.py`.
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Implement `app/redaction/redactor.py`: Presidio analyzer+anonymizer singleton (`@lru_cache`, mirror `app/triage/ner.py:_get_nlp`); `redact(text) -> RedactionResult`; offload analyze with `asyncio.to_thread`; never log raw text. Use `en_core_web_sm` (NOT scispaCy).
-- [ ] T021 [US2] Implement `app/redaction/recognizers.py`: custom secret-pattern recognizer (`sk-`, `sk-ant-`, AWS `AKIA`, JWT, high-entropy key contexts) + medical-record/case-number recognizer.
-- [ ] T022 [US2] Add a structlog redaction processor in `app/observability/logging.py` (redact string event values before render); confirm against the existing `configure_logging`.
-- [ ] T023 [US2] Extend agent-path trace redaction in `app/observability/tracing.py` so the agent trace carries no content (FR-023); do not duplicate the existing triage `traced_llm_call`.
-- [ ] T024 [US2] Insert `redact()` BEFORE the guard+`_call_llm` calls at the triage egress in `app/triage/llm.py` (ordering FR-012). **Sequential after T014** (same function).
-- [ ] T025 [US2] Insert `redact()` on message content BEFORE `chat_model.ainvoke` in `app/agent/graph.py` (covers retrieved RAG context; citations are chunk_id refs so grounding is unaffected). **Sequential after T015** (same function).
+- [x] T020 [US2] Implement `app/redaction/redactor.py`: Presidio analyzer+anonymizer singleton (`@lru_cache`, mirror `app/triage/ner.py:_get_nlp`); `redact(text) -> RedactionResult`; offload analyze with `asyncio.to_thread`; never log raw text. Use `en_core_web_sm` (NOT scispaCy).
+- [x] T021 [US2] Implement `app/redaction/recognizers.py`: custom secret-pattern recognizer (`sk-`, `sk-ant-`, AWS `AKIA`, JWT, high-entropy key contexts) + medical-record/case-number recognizer.
+- [x] T022 [US2] Add a structlog redaction processor in `app/observability/logging.py` (redact string event values before render); confirm against the existing `configure_logging`.
+- [x] T023 [US2] Extend agent-path trace redaction in `app/observability/tracing.py` so the agent trace carries no content (FR-023); do not duplicate the existing triage `traced_llm_call`.
+- [x] T024 [US2] Insert `redact()` BEFORE the guard+`_call_llm` calls at the triage egress in `app/triage/llm.py` (ordering FR-012). **Sequential after T014** (same function).
+- [x] T025 [US2] Insert `redact()` on message content BEFORE `chat_model.ainvoke` in `app/agent/graph.py` (covers retrieved RAG context; citations are chunk_id refs so grounding is unaffected). **Sequential after T015** (same function).
 
 **Checkpoint**: US2 independently functional — redaction gate green, no leak at any egress, clinical signal preserved.
 
@@ -101,16 +101,16 @@ description: "Task list for 012-security-hardening implementation"
 
 ### Tests for User Story 3
 
-- [ ] T026 [P] [US3] RLS isolation integration test `tests/integration/test_rls_isolation.py` (default-deny, client-scoped read, staff read-all, cross-client write rejection, migration/seed bypass) — needs real Postgres + both roles. **Also assert FR-020: a staff cross-client action under staff context still emits an audit row naming the server-validated target client** (RLS staff-context must not break the existing `acting_client` attribution — Principle V compensating control (a); resolves analyze G1).
+- [x] T026 [P] [US3] RLS isolation integration test `tests/integration/test_rls_isolation.py` (default-deny, client-scoped read, staff read-all, cross-client write rejection, migration/seed bypass) — needs real Postgres + both roles. **Also assert FR-020: a staff cross-client action under staff context still emits an audit row naming the server-validated target client** (RLS staff-context must not break the existing `acting_client` attribution — Principle V compensating control (a); resolves analyze G1).
 
 ### Implementation for User Story 3
 
-- [ ] T027 [US3] DB role bootstrap: idempotent `CREATE ROLE pantera_app LOGIN PASSWORD … NOSUPERUSER NOBYPASSRLS` via a docker-compose postgres init script + a CI step on the fresh Postgres service (password matches `app_database_url`). NOT in the migration.
-- [ ] T028 [US3] Migration `app/db/migrations/versions/0011_rls_policies.py` (`revision="0011"`, `down_revision="0010"`): loop the policied-table list (`contracts/rls-policies.md`) applying `ENABLE`+`FORCE ROW LEVEL SECURITY` + `tenant_isolation` policy (USING + WITH CHECK) + `GRANT … TO pantera_app`; `clients` keys on `id`; `users`/`audit_log` exempt. Working downgrade (drop policy/NO FORCE/DISABLE/revoke; do NOT drop role).
-- [ ] T029 [US3] Implement `app/db/rls.py:set_rls_context(session, *, client_id, is_staff)` using `set_config('app.current_client_id'|'app.is_staff', …, true)` (transaction-local).
-- [ ] T030 [US3] Switch the runtime engine to `app_database_url` + `connect_args={"statement_cache_size": 0}` in `app/db/base.py:create_engine`; update `app/core/lifespan.py:65` and the worker engine to use `app_database_url`. Migrations/seed/`env.py` stay on `database_url`.
-- [ ] T031 [US3] Set request RLS context in `app/auth/dependencies.py:current_active_principal` right after `session.get(User, …)`: client-user → `(client_id=user.client_id, is_staff=False)`, staff → `(client_id=None, is_staff=True)`.
-- [ ] T032 [US3] Set SYSTEM RLS context `(client_id=None, is_staff=True)` at every non-request session-open site after `session.begin()`: worker job sessions, `app/core/lifespan.py` bootstrap + ingestion-startup sessions, triage runner, `app/embedding/runner.py`, scheduling cadence loop, agent `run_agent`. **Enumerate all** (research R7 / implementation-notes §9.1) — a missed site returns 0 rows.
+- [x] T027 [US3] DB role bootstrap: idempotent `CREATE ROLE pantera_app LOGIN PASSWORD … NOSUPERUSER NOBYPASSRLS` via a docker-compose postgres init script + a CI step on the fresh Postgres service (password matches `app_database_url`). NOT in the migration.
+- [x] T028 [US3] Migration `app/db/migrations/versions/0011_rls_policies.py` (`revision="0011"`, `down_revision="0010"`): loop the policied-table list (`contracts/rls-policies.md`) applying `ENABLE`+`FORCE ROW LEVEL SECURITY` + `tenant_isolation` policy (USING + WITH CHECK) + `GRANT … TO pantera_app`; `clients` keys on `id`; `users`/`audit_log` exempt. Working downgrade (drop policy/NO FORCE/DISABLE/revoke; do NOT drop role).
+- [x] T029 [US3] Implement `app/db/rls.py:set_rls_context(session, *, client_id, is_staff)` using `set_config('app.current_client_id'|'app.is_staff', …, true)` (transaction-local).
+- [x] T030 [US3] Switch the runtime engine to `app_database_url` + `connect_args={"statement_cache_size": 0}` in `app/db/base.py:create_engine`; update `app/core/lifespan.py:65` and the worker engine to use `app_database_url`. Migrations/seed/`env.py` stay on `database_url`.
+- [x] T031 [US3] Set request RLS context in `app/auth/dependencies.py:current_active_principal` right after `session.get(User, …)`: client-user → `(client_id=user.client_id, is_staff=False)`, staff → `(client_id=None, is_staff=True)`.
+- [x] T032 [US3] Set SYSTEM RLS context `(client_id=None, is_staff=True)` at every non-request session-open site after `session.begin()`: worker job sessions, `app/core/lifespan.py` bootstrap + ingestion-startup sessions, triage runner, `app/embedding/runner.py`, scheduling cadence loop, agent `run_agent`. **Enumerate all** (research R7 / implementation-notes §9.1) — a missed site returns 0 rows.
 
 **Checkpoint**: US3 independently functional — isolation test green; stack boots + migrates with RLS active.
 
@@ -124,8 +124,8 @@ description: "Task list for 012-security-hardening implementation"
 
 **Depends on**: US2 (redaction at the trace boundary).
 
-- [ ] T033 [US4] In `app/observability/tracing.py`: confirm `configure_tracing` keeps default-off + its warning, and that agent-path traces route through redaction (T023); document the "redaction is the control" note (FR-024).
-- [ ] T034 [P] [US4] Integration test `tests/integration/test_trace_redaction.py`: tracing on + agent run over planted PII → assert no PII/secret in the captured trace (SC-007).
+- [x] T033 [US4] In `app/observability/tracing.py`: confirm `configure_tracing` keeps default-off + its warning, and that agent-path traces route through redaction (T023); document the "redaction is the control" note (FR-024).
+- [x] T034 [P] [US4] Integration test `tests/integration/test_trace_redaction.py`: tracing on + agent run over planted PII → assert no PII/secret in the captured trace (SC-007).
 
 **Checkpoint**: tracing safely re-enablable; SC-007 proven.
 
@@ -139,8 +139,8 @@ description: "Task list for 012-security-hardening implementation"
 
 **Depends on**: US1 (guardrails on triage) + US2 (redaction before triage call).
 
-- [ ] T035 [US5] Mark both spec-8 deviations closed in `specs/008-triage-routing/` (plan Complexity Tracking) and `docs/DECISIONS.md`, referencing spec-12 controls (FR-025/SC-008).
-- [ ] T036 [P] [US5] Assertion test confirming the triage path order is redact → guard → external call in `app/triage/llm.py` (lightweight; complements US1/US2 gates). **Also add a guarded-path inventory assertion** enumerating the four guarded sites (triage resolution, triage valence, drafting agent, document intake) and asserting each routes through `guard` — satisfies SC-001's "verified by inventory and test" (resolves analyze G3).
+- [x] T035 [US5] Mark both spec-8 deviations closed in `specs/008-triage-routing/` (plan Complexity Tracking) and `docs/DECISIONS.md`, referencing spec-12 controls (FR-025/SC-008).
+- [x] T036 [P] [US5] Assertion test confirming the triage path order is redact → guard → external call in `app/triage/llm.py` (lightweight; complements US1/US2 gates). **Also add a guarded-path inventory assertion** enumerating the four guarded sites (triage resolution, triage valence, drafting agent, document intake) and asserting each routes through `guard` — satisfies SC-001's "verified by inventory and test" (resolves analyze G3).
 
 **Checkpoint**: constitution Complexity Tracking carries no open triage security deviations.
 
@@ -148,10 +148,10 @@ description: "Task list for 012-security-hardening implementation"
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T037 [P] Add `docs/` runbook updates: guardrails sidecar ops, RLS role provisioning (`pantera_app`), redaction behavior, tracing re-enable procedure.
-- [ ] T038 [P] Add `docs/DECISIONS.md` entries: guardrails engine choice (+ torch-free/nemoguardrails deviation if the literal library isn't used, research R1), RLS two-role design.
-- [ ] T039 Run `quickstart.md` validation — all 5 scenarios on the live stack (RLS isolation, redaction leak=0, red-team block + fail-safe, trace redaction, deviation closure). Do NOT trust green checkmarks ([[verify-before-claiming-done]]).
-- [ ] T040 Full gate: `ruff check` + `black --check` on `app worker guardrails tests`; `pytest tests/unit` + `pytest tests/integration` (live DB); coverage ≥80% overall (auth/HITL/DB-write ≥95%); both new eval gates pass. **Also verify SC-004 (no redaction regression):** run the existing triage golden-set and RAG golden-set eval gates with redaction active in the path, confirming triage recall + report grounding stay ≥ their committed `eval_thresholds.yaml` thresholds (confirm those gates exercise the redacted path; if they bypass it, add a redacted-path variant) — resolves analyze G2.
+- [x] T037 [P] Add `docs/` runbook updates: guardrails sidecar ops, RLS role provisioning (`pantera_app`), redaction behavior, tracing re-enable procedure.
+- [x] T038 [P] Add `docs/DECISIONS.md` entries: guardrails engine choice (+ torch-free/nemoguardrails deviation if the literal library isn't used, research R1), RLS two-role design.
+- [x] T039 Run `quickstart.md` validation — all 5 scenarios on the live stack (RLS isolation, redaction leak=0, red-team block + fail-safe, trace redaction, deviation closure). Do NOT trust green checkmarks ([[verify-before-claiming-done]]).
+- [x] T040 Full gate: `ruff check` + `black --check` on `app worker guardrails tests`; `pytest tests/unit` + `pytest tests/integration` (live DB); coverage ≥80% overall (auth/HITL/DB-write ≥95%); both new eval gates pass. **Also verify SC-004 (no redaction regression):** run the existing triage golden-set and RAG golden-set eval gates with redaction active in the path, confirming triage recall + report grounding stay ≥ their committed `eval_thresholds.yaml` thresholds (confirm those gates exercise the redacted path; if they bypass it, add a redacted-path variant) — resolves analyze G2.
 
 ---
 
