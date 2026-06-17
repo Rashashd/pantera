@@ -28,8 +28,8 @@ export default function SignIn() {
 
         {/* lockup */}
         <Wordmark
-          iconClassName="h-16 w-16"
-          textClassName="text-[27px] text-foreground"
+          iconClassName="h-24 w-24"
+          textClassName="text-[34px] text-foreground"
           className="relative z-10"
         />
 
@@ -69,8 +69,8 @@ export default function SignIn() {
         <div className="w-full max-w-[368px]">
           {/* compact lockup for narrow screens (brand panel is hidden there) */}
           <Wordmark
-            iconClassName="h-9 w-9"
-            textClassName="text-xl text-foreground"
+            iconClassName="h-12 w-12"
+            textClassName="text-2xl text-foreground"
             className="mb-8 lg:hidden"
           />
 

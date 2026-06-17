@@ -159,11 +159,11 @@ export function AppShell() {
         >
           {collapsed ? (
             <Link to="/" aria-label="Pantera home">
-              <PantherMark className="h-8 w-8" />
+              <PantherMark className="h-11 w-11" />
             </Link>
           ) : (
             <Link to="/" aria-label="Pantera home" className="text-foreground">
-              <Wordmark iconClassName="h-9 w-9" textClassName="text-lg" />
+              <Wordmark iconClassName="h-12 w-12" textClassName="text-xl" />
             </Link>
           )}
           {!collapsed && (
