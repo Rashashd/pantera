@@ -26,9 +26,9 @@ description: "Task list for 013-delivery implementation"
 
 **Purpose**: Package skeleton + config, no behavior yet.
 
-- [ ] T001 [P] Create the `app/delivery/` package skeleton (`__init__.py` + empty `models.py`, `rendering.py`, `n8n_client.py`, `service.py`, `handlers.py`, `notifications.py`, `sweep.py`, `routes.py`), each with a one-sentence module docstring, in `app/delivery/`
-- [ ] T002 [P] Add optional delivery settings to `app/core/config.py`: `n8n_webhook_url: str = ""`, `delivery_callback_token: str = ""`, `delivery_no_callback_window_hours: int = 6`, `sla_tier2_interval_hours: int = 2`, `delivery_sweep_cron_minute: int = "*/15"`-equivalent. Do NOT add to `_REQUIRED_SECRETS`.
-- [ ] T003 [P] Register the optional `n8n_webhook_url` + `delivery_callback_token` secrets in `scripts/write_secrets.py` (local Vault) — NOT in `_REQUIRED_SECRETS`, NOT in `.github/workflows/ci.yml` (delivery degrades/holds when unset; app must still boot)
+- [x] T001 [P] Create the `app/delivery/` package skeleton (`__init__.py` + empty `models.py`, `rendering.py`, `n8n_client.py`, `service.py`, `handlers.py`, `notifications.py`, `sweep.py`, `routes.py`), each with a one-sentence module docstring, in `app/delivery/`
+- [x] T002 [P] Add optional delivery settings to `app/core/config.py`: `n8n_webhook_url: str = ""`, `delivery_callback_token: str = ""`, `delivery_no_callback_window_hours: int = 6`, `sla_tier2_interval_hours: int = 2`, `delivery_sweep_cron_minute: int = "*/15"`-equivalent. Do NOT add to `_REQUIRED_SECRETS`.
+- [x] T003 [P] Register the optional `n8n_webhook_url` + `delivery_callback_token` secrets in `scripts/write_secrets.py` (local Vault) — NOT in `_REQUIRED_SECRETS`, NOT in `.github/workflows/ci.yml` (delivery degrades/holds when unset; app must still boot)
 
 ---
 
@@ -36,13 +36,13 @@ description: "Task list for 013-delivery implementation"
 
 **⚠️ CRITICAL**: Blocks US1/US2/US3. No delivery work begins until the schema + states exist.
 
-- [ ] T004 Extend `ReportStatus` with `SENT`/`DELIVERED`/`DELIVERY_FAILED` and update `is_terminal` (delivered terminal; delivery_failed not) in `app/reports/enums.py`
-- [ ] T005 Author migration `app/db/migrations/versions/0012_delivery.py` (`revision="0012"`, `down_revision="0011"`): widen `ck_reports_status` (drop+recreate, 9 values); add `reports` columns `sent_at`/`delivered_at`/`delivery_failed_at`/`delivery_error`/`sla_escalation_tier`(default 0)/`sla_escalated_at`; add `clients` columns `sftp_enabled`(default false)/`sftp_host`/`sftp_path`/`sftp_username`; create `delivery_attempt` table + indexes + unique `(report_id, channel)`; add the tenant-isolation RLS policy for `delivery_attempt` (mirror `0011_rls_policies.py`) (depends T004)
-- [ ] T006 [P] Mirror the new `reports` delivery/SLA columns + widened status CHECK in the `Report` model in `app/reports/models.py`
-- [ ] T007 [P] Create the `DeliveryAttempt` ORM model (per `(report_id, channel)`; status pending/delivered/failed) in `app/delivery/models.py`
-- [ ] T008 [P] Add the SFTP destination columns to the `Client` model in `app/clients/models.py`
-- [ ] T009 [P] Add delivery/notification domain events (`ReportDispatched`, `ReportDelivered`, `ReportDeliveryFailed`, `ReportDeliveryHeld`, `ReportResent`, `SlaEscalated`, `AuditExported`) in `app/domain/events.py`
-- [ ] T010 Apply + verify migration on the live DB: `uv run alembic upgrade head` reaches `0012`, then verify `downgrade` is clean (`pantera_app` role must exist first) (depends T005, T006, T007, T008)
+- [x] T004 Extend `ReportStatus` with `SENT`/`DELIVERED`/`DELIVERY_FAILED` and update `is_terminal` (delivered terminal; delivery_failed not) in `app/reports/enums.py`
+- [x] T005 Author migration `app/db/migrations/versions/0012_delivery.py` (`revision="0012"`, `down_revision="0011"`): widen `ck_reports_status` (drop+recreate, 9 values); add `reports` columns `sent_at`/`delivered_at`/`delivery_failed_at`/`delivery_error`/`sla_escalation_tier`(default 0)/`sla_escalated_at`; add `clients` columns `sftp_enabled`(default false)/`sftp_host`/`sftp_path`/`sftp_username`; create `delivery_attempt` table + indexes + unique `(report_id, channel)`; add the tenant-isolation RLS policy for `delivery_attempt` (mirror `0011_rls_policies.py`) (depends T004)
+- [x] T006 [P] Mirror the new `reports` delivery/SLA columns + widened status CHECK in the `Report` model in `app/reports/models.py`
+- [x] T007 [P] Create the `DeliveryAttempt` ORM model (per `(report_id, channel)`; status pending/delivered/failed) in `app/delivery/models.py`
+- [x] T008 [P] Add the SFTP destination columns to the `Client` model in `app/clients/models.py`
+- [x] T009 [P] Add delivery/notification domain events (`ReportDispatched`, `ReportDelivered`, `ReportDeliveryFailed`, `ReportDeliveryHeld`, `ReportResent`, `SlaEscalated`, `AuditExported`) in `app/domain/events.py`
+- [x] T010 Apply + verify migration on the live DB: `uv run alembic upgrade head` reaches `0012`, then verify `downgrade` is clean (`pantera_app` role must exist first) (depends T005, T006, T007, T008)
 
 **Checkpoint**: schema + states + models ready.
 
