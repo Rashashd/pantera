@@ -154,14 +154,14 @@ description: "Task list for 013-delivery implementation"
 
 ### Tests for User Story 5
 
-- [ ] T043 [P] [US5] Integration test: report download — owning client-user 200, other client 404, staff acting-client in `tests/integration/test_report_download.py`
-- [ ] T044 [P] [US5] Integration test: audit access/export role model — manager all events, admin client/watchlist only, reviewer 403; `AuditExported` audited in `tests/integration/test_audit_export.py`
+- [x] T043 [P] [US5] Integration test: report download — owning client-user 200, other client 404, staff acting-client in `tests/integration/test_report_download.py`
+- [x] T044 [P] [US5] Integration test: audit access/export role model — manager all events, admin client/watchlist only, reviewer 403; `AuditExported` audited in `tests/integration/test_audit_export.py`
 
 ### Implementation for User Story 5
 
-- [ ] T045 [US5] Implement `GET /clients/{client_id}/reports/{report_id}/download` (reuse `render_report_document`; client-user own approved/sent/delivered only; staff acting-client) in `app/delivery/routes.py` (depends T015)
-- [ ] T046 [US5] Refine `GET /audit` authorization — admin → client/watchlist categories only; reviewer → 403 — in `app/audit/routes.py`
-- [ ] T047 [US5] Implement `GET /audit/export?format=csv|json` (manager/admin; bounded/paginated; emits `AuditExported`) in `app/audit/routes.py` (depends T046, T009)
+- [x] T045 [US5] Implement `GET /clients/{client_id}/reports/{report_id}/download` (reuse `render_report_document`; client-user own approved/sent/delivered only; staff acting-client) in `app/delivery/routes.py` (depends T015)
+- [x] T046 [US5] Refine `GET /audit` authorization — admin → client/watchlist categories only; reviewer → 403 — in `app/audit/routes.py`
+- [x] T047 [US5] Implement `GET /audit/export?format=csv|json` (manager/admin; bounded/paginated; emits `AuditExported`) in `app/audit/routes.py` (depends T046, T009)
 - [ ] T048 [P] [US5] Enable + wire `DownloadReportButton` to the download endpoint in `frontend/src/components/DownloadReportButton.tsx`
 - [ ] T049 [P] [US5] Enable + wire `AuditExportButton` to `/audit/export` in `frontend/src/components/admin/AuditExportButton.tsx`
 

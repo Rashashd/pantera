@@ -6,16 +6,18 @@ import secrets
 from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import acting_client, require_admin
 from app.auth.models import User
+from app.clients.models import Client
 from app.core.dependencies import get_session
 from app.db.rls import set_rls_context
 from app.delivery import service as svc
 from app.delivery.n8n_client import N8nClient
+from app.delivery.rendering import render_report_document
 from app.reports.enums import ReportStatus
 from app.reports.models import Report
 from app.reports.schemas import ReportSummary
@@ -23,6 +25,10 @@ from app.reports.schemas import ReportSummary
 router = APIRouter(prefix="/clients/{client_id}", tags=["delivery"])
 
 _get_client = acting_client()
+_get_client_read = acting_client(allow_suspended=True)
+
+# The downloadable artifact is the delivered document; only meaningful from approval onward.
+_DOWNLOADABLE = {ReportStatus.APPROVED, ReportStatus.SENT, ReportStatus.DELIVERED}
 
 # Reports for which a re-send is meaningful (a held release, a retry, or a failed channel).
 _RESENDABLE = {ReportStatus.APPROVED, ReportStatus.SENT, ReportStatus.DELIVERY_FAILED}
@@ -123,3 +129,30 @@ async def resend_report(
     await session.flush()
     await session.refresh(report)
     return ReportSummary.model_validate(report)
+
+
+@router.get("/reports/{report_id}/download")
+async def download_report(
+    report_id: int,
+    client: Client = Depends(_get_client_read),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Return the rendered report document (FR-017) — the same artifact delivered to the client.
+
+    A client-user may download only their own approved/sent/delivered reports (acting_client
+    enforces ownership; another client's user → 404). Staff download for the acting client.
+    """
+    report = await session.get(Report, report_id)
+    if (
+        report is None
+        or report.client_id != client.id
+        or ReportStatus(report.status) not in _DOWNLOADABLE
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="REPORT_NOT_FOUND")
+
+    document = render_report_document(report, await svc._included_findings(session, report))
+    return Response(
+        content=document,
+        media_type="text/html",
+        headers={"Content-Disposition": f'attachment; filename="report-{report_id}.html"'},
+    )
