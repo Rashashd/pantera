@@ -228,8 +228,8 @@ description: "Task list for 013-delivery implementation"
 - [x] T059 [P] Add/verify a redaction-gate assertion that delivery + notification **logs/traces** carry no fake PII/secret (scope to log + trace values ONLY — the rendered report body delivered to its own client is intentionally NOT redacted) in `tests/integration/` (or extend the existing redaction test)
 - [x] T060 Run `uv run ruff check app worker tests` AND `uv run black --check app worker tests`; fix all
 - [x] T061 Run the full suite (`uv run pytest` + `PANTERA_INTEGRATION=1 uv run pytest tests/integration`); confirm ≥80% overall and ≥95% on delivery DB-write/callback/HITL-adjacent paths
-- [ ] T062 Execute `specs/013-delivery/quickstart.md` scenarios A–I against real services (n8n mocked); fix gaps
-- [ ] T063 Fresh-clone smoke: `docker compose up` + build/serve the SPA incl. the new Staff/Users screens
+- [x] T062 Execute `specs/013-delivery/quickstart.md` scenarios A–I against real services (n8n mocked); fix gaps
+- [x] T063 Fresh-clone smoke: `docker compose up` + build/serve the SPA incl. the new Staff/Users screens
 - [x] T064 Cross-check every "does-not-exist-yet" item in `implementation-notes.md` is built; move the resolved spec-13 items to "Resolved" in the frontend-forward-dependency ledger (memory)
 
 ---
