@@ -95,9 +95,7 @@ async def test_export_role_scope_and_audited(
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_audit_list_admin_scope(
-    auth_app, make_client, make_staff_user, priv_factory
-) -> None:
+async def test_audit_list_admin_scope(auth_app, make_client, make_staff_user, priv_factory) -> None:
     """GET /audit for an admin excludes report events (client/watchlist scope only)."""
     cl = await make_client()
     await _seed_audit(priv_factory, cl.id)
