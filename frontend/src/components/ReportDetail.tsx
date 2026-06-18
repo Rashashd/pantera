@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { useReport, useReportFindings } from "@/api/hooks";
 import { CitationPanel } from "./CitationPanel";
+import { PassageDrawer } from "./PassageDrawer";
 import { ProvenanceBadge } from "./ProvenanceBadge";
 import { ReviewerActions } from "./ReviewerActions";
 import { RevisionHistory } from "./RevisionHistory";
@@ -15,7 +16,7 @@ import { DownloadReportButton } from "./DownloadReportButton";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { cn } from "@/lib/utils";
-import type { Claim } from "@/api/schemas";
+import type { Claim, CorroborationSource } from "@/api/schemas";
 
 interface Props {
   clientId: number | null;
@@ -48,6 +49,9 @@ export function ReportDetail({ clientId, reportId, mode }: Props) {
   const [selectedFindingId, setSelectedFindingId] = useState<number | null>(null);
   // Citation review tracking (FR-040) — per-session, client-side
   const [reviewedChunks, setReviewedChunks] = useState<Set<string>>(new Set());
+  // Shared passage drawer — opened from a source row or a claim's inline [n]
+  const [openChunkId, setOpenChunkId] = useState<number | null>(null);
+  const [openSource, setOpenSource] = useState<CorroborationSource | null>(null);
 
   const isReadOnly = mode !== "queue";
   const isBatch = report?.report_type === "batch";
@@ -65,6 +69,35 @@ export function ReportDetail({ clientId, reportId, mode }: Props) {
   const citationProgress = {
     reviewed: reviewedChunks.size,
     total: allChunkIds.length,
+  };
+
+  // Reference numbering: map each source's chunk ids → its 1-based reference
+  // number, so a claim's source_ref resolves to the same [n] shown in References.
+  const chunkToSourceIdx = new Map<number, number>();
+  sources.forEach((s, i) =>
+    (s.passage_chunk_ids ?? []).forEach((cid) => {
+      if (!chunkToSourceIdx.has(cid)) chunkToSourceIdx.set(cid, i);
+    }),
+  );
+  const markReviewed = (ref: string) =>
+    setReviewedChunks((prev) => new Set([...prev, ref]));
+  const refNumber = (ref?: string | null): number | null => {
+    if (!ref) return null;
+    const idx = chunkToSourceIdx.get(parseInt(ref, 10));
+    return idx == null ? null : idx + 1;
+  };
+  const openByRef = (ref: string) => {
+    const cid = parseInt(ref, 10);
+    const idx = chunkToSourceIdx.get(cid);
+    setOpenSource(idx == null ? null : sources[idx]);
+    setOpenChunkId(Number.isNaN(cid) ? null : cid);
+    markReviewed(ref);
+  };
+  const openSourceRow = (src: CorroborationSource) => {
+    const cid = src.passage_chunk_ids?.[0] ?? null;
+    setOpenSource(src);
+    setOpenChunkId(cid);
+    if (cid != null) markReviewed(String(cid));
   };
 
   const backPath = mode === "queue" ? "/queue" : mode === "all-reports" ? "/reports" : "/portal";
@@ -164,19 +197,32 @@ export function ReportDetail({ clientId, reportId, mode }: Props) {
               Structured claims
             </h2>
             <ol className="space-y-3">
-              {sortClaims(report.structured_fields).map((claim, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm">
-                  <ProvenanceBadge
-                    claim={claim}
-                    onSourceClick={() => {
-                      if (claim.source_ref) {
-                        setReviewedChunks((s) => new Set([...s, claim.source_ref!]));
-                      }
-                    }}
-                  />
-                  <span className="flex-1">{claim.text}</span>
-                </li>
-              ))}
+              {sortClaims(report.structured_fields).map((claim, i) => {
+                const n = refNumber(claim.source_ref);
+                return (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <ProvenanceBadge
+                      claim={claim}
+                      onSourceClick={() => {
+                        if (claim.source_ref) openByRef(claim.source_ref);
+                      }}
+                    />
+                    <span className="flex-1">
+                      {claim.text}
+                      {n != null && (
+                        <button
+                          type="button"
+                          onClick={() => openByRef(claim.source_ref!)}
+                          className="ml-1 align-super text-[11px] font-medium text-primary hover:underline"
+                          aria-label={`View reference ${n}`}
+                        >
+                          [{n}]
+                        </button>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
             </ol>
           </section>
 
@@ -196,9 +242,9 @@ export function ReportDetail({ clientId, reportId, mode }: Props) {
 
           {/* Citations */}
           <CitationPanel
-            clientId={clientId}
             sources={sources}
             corroborationCount={report.corroboration_count}
+            onOpen={(src) => openSourceRow(src)}
           />
 
           <Separator />
@@ -220,6 +266,19 @@ export function ReportDetail({ clientId, reportId, mode }: Props) {
           report={report}
           citationReviewProgress={citationProgress}
           onAction={() => refetch()}
+        />
+      )}
+
+      {/* Shared passage drawer (opened from a source row or a claim's [n]) */}
+      {openChunkId !== null && (
+        <PassageDrawer
+          clientId={clientId}
+          chunkId={openChunkId}
+          source={openSource}
+          onClose={() => {
+            setOpenChunkId(null);
+            setOpenSource(null);
+          }}
         />
       )}
     </div>
