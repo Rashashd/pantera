@@ -11,6 +11,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
+  ServerCrash,
   Settings,
   Shield,
 } from "lucide-react";
@@ -83,6 +84,12 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["manager", "admin"],
   },
   {
+    label: "Failed Queue",
+    href: "/failed-queue",
+    icon: <ServerCrash className="h-5 w-5" />,
+    roles: ["manager", "admin"],
+  },
+  {
     label: "My Reports",
     href: "/portal",
     icon: <Shield className="h-5 w-5" />,
@@ -125,6 +132,7 @@ function pageTitle(pathname: string): string {
   if (pathname.startsWith("/costs")) return "Costs";
   if (pathname.startsWith("/clients")) return "Clients";
   if (pathname.startsWith("/audit")) return "Audit Log";
+  if (pathname.startsWith("/failed-queue")) return "Failed Queue";
   if (pathname.startsWith("/portal")) return "My Reports";
   return "Pantera";
 }

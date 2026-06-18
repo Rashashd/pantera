@@ -214,6 +214,25 @@ export const AuditEntrySchema = z.object({
 });
 export type AuditEntry = z.infer<typeof AuditEntrySchema>;
 
+// --- Dead-letter / failed jobs (spec 11 backend; FR-021) ---
+
+export const DeadLetterSchema = z.object({
+  id: z.number(),
+  job_name: z.string(),
+  job_key: z.string(),
+  client_id: z.number().nullable(),
+  args_digest: z.string(),
+  error_class: z.string(),
+  // Short (<=200 char) text for permanent errors; null for transient — fall
+  // back to error_class when null. No PII/payload (FR-011).
+  error_summary: z.string().nullable(),
+  attempts: z.number(),
+  first_failed_at: z.string(),
+  dead_lettered_at: z.string(),
+  resolved_at: z.string().nullable(),
+});
+export type DeadLetter = z.infer<typeof DeadLetterSchema>;
+
 // --- Cost / Ops Dashboard ---
 
 export const CallSiteBreakdownSchema = z.object({
