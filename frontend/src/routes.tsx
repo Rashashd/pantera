@@ -9,6 +9,7 @@ const ReviewerQueue = lazy(() => import("@/pages/ReviewerQueue"));
 const AllReports = lazy(() => import("@/pages/AllReports"));
 const ReportDetailPage = lazy(() => import("@/pages/ReportDetailPage"));
 const AdminConsole = lazy(() => import("@/pages/AdminConsole"));
+const Costs = lazy(() => import("@/pages/Costs"));
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const GlobalOverview = lazy(() => import("@/pages/GlobalOverview"));
 const AuditLog = lazy(() => import("@/pages/AuditLog"));
@@ -85,6 +86,16 @@ export const router = createBrowserRouter([
           <RequireRole roles={["manager"]}>
             <Suspense fallback={<Loading />}>
               <Clients />
+            </Suspense>
+          </RequireRole>
+        ),
+      },
+      {
+        path: "costs",
+        element: (
+          <RequireRole roles={["manager"]}>
+            <Suspense fallback={<Loading />}>
+              <Costs />
             </Suspense>
           </RequireRole>
         ),

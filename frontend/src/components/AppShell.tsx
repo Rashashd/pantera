@@ -4,6 +4,7 @@ import {
   BarChart3,
   Building2,
   ClipboardList,
+  DollarSign,
   LayoutDashboard,
   List,
   LogOut,
@@ -54,6 +55,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Dashboard",
     href: "/admin/dashboard",
     icon: <LayoutDashboard className="h-5 w-5" />,
+    roles: ["manager"],
+  },
+  {
+    label: "Costs",
+    href: "/costs",
+    icon: <DollarSign className="h-5 w-5" />,
     roles: ["manager"],
   },
   {
@@ -115,6 +122,7 @@ function pageTitle(pathname: string): string {
   if (pathname.startsWith("/admin/overview")) return "Overview";
   if (pathname.startsWith("/admin/dashboard")) return "Dashboard";
   if (pathname.startsWith("/admin")) return "Admin Console";
+  if (pathname.startsWith("/costs")) return "Costs";
   if (pathname.startsWith("/clients")) return "Clients";
   if (pathname.startsWith("/audit")) return "Audit Log";
   if (pathname.startsWith("/portal")) return "My Reports";
