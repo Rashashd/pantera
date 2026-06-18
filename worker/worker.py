@@ -60,6 +60,7 @@ from app.jobs.scheduler import scheduler_tick  # noqa: E402
 from app.jobs.tasks import (  # noqa: E402
     task_consolidate,
     task_cycle_start,
+    task_deliver_report,
     task_expedited,
     task_index_build,
     task_redraft,
@@ -89,6 +90,7 @@ class WorkerSettings:
         task_redraft,
         task_consolidate,
         task_cycle_start,
+        task_deliver_report,
         purge_expired,
     ]
     cron_jobs = _cron_jobs

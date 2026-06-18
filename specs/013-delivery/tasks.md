@@ -56,25 +56,25 @@ description: "Task list for 013-delivery implementation"
 
 ### Tests for User Story 1
 
-- [ ] T011 [P] [US1] Unit test: overall report delivery-status derivation from per-channel `delivery_attempt` rows (delivered=all; failed=any) in `tests/unit/test_delivery_status.py`
-- [ ] T012 [P] [US1] Unit test: `render_report_document` includes claims+provenance, corroboration count + all sources, narrative; batch = included findings only in `tests/unit/test_delivery_rendering.py`
-- [ ] T013 [P] [US1] Integration test: approve → dispatch (`sent`, attempt rows, n8n POST mocked) → delivered callback → `delivered` + `delivered_at` + audited; non-approved statuses never dispatch in `tests/integration/test_delivery.py`
-- [ ] T014 [P] [US1] Integration test: multi-channel one-fails → `delivery_failed` + alert → admin re-send (failed channel only, confirmed channel not re-sent) → `delivered`; callback idempotency + unknown-dispatch 404; no-channel hold; suspended hold → reactivate release in `tests/integration/test_delivery_failure.py`
-- [ ] T014a [P] [US1] Integration test (FR-007b comprehensive pause): a suspended client is excluded from `query_due_watchlists` (no cycles run) and is included again after reactivation (cycles resume) — asserts the cycle-pause claim, not just delivery hold — in `tests/integration/test_suspension_pause.py`
-- [ ] T014b [P] [US1] Integration test: dispatch selects the **urgent** recipient for an expedited report and the **regular** recipient otherwise (FR-003) in `tests/integration/test_delivery.py`
+- [x] T011 [P] [US1] Unit test: overall report delivery-status derivation from per-channel `delivery_attempt` rows (delivered=all; failed=any) in `tests/unit/test_delivery_status.py`
+- [x] T012 [P] [US1] Unit test: `render_report_document` includes claims+provenance, corroboration count + all sources, narrative; batch = included findings only in `tests/unit/test_delivery_rendering.py`
+- [x] T013 [P] [US1] Integration test: approve → dispatch (`sent`, attempt rows, n8n POST mocked) → delivered callback → `delivered` + `delivered_at` + audited; non-approved statuses never dispatch in `tests/integration/test_delivery.py`
+- [x] T014 [P] [US1] Integration test: multi-channel one-fails → `delivery_failed` + alert → admin re-send (failed channel only, confirmed channel not re-sent) → `delivered`; callback idempotency + unknown-dispatch 404; no-channel hold; suspended hold → reactivate release in `tests/integration/test_delivery_failure.py`
+- [x] T014a [P] [US1] Integration test (FR-007b comprehensive pause): a suspended client is excluded from `query_due_watchlists` (no cycles run) and is included again after reactivation (cycles resume) — asserts the cycle-pause claim, not just delivery hold — in `tests/integration/test_suspension_pause.py`
+- [x] T014b [P] [US1] Integration test: dispatch selects the **urgent** recipient for an expedited report and the **regular** recipient otherwise (FR-003) in `tests/integration/test_delivery.py`
 
 ### Implementation for User Story 1
 
-- [ ] T015 [P] [US1] Implement `render_report_document(report) -> str` (self-contained HTML; no PDF) in `app/delivery/rendering.py`
-- [ ] T016 [P] [US1] Implement the n8n client — async `httpx` + `tenacity` (3 attempts, never 4xx), POST per channel, mockable — in `app/delivery/n8n_client.py`
-- [ ] T017 [US1] Implement the delivery service (resolve configured channels per FR-003; dispatch; write/update `delivery_attempt` rows; derive report status; confirm/fail; resend failed-only; hold on no-channel/suspended with fresh-from-stored-state check) in `app/delivery/service.py` (depends T007, T015, T016)
-- [ ] T018 [US1] Implement durable job `task_deliver_report` (render → dispatch → `sent`/`sent_at`; hold path) — job **body** in `app/delivery/service.py`, the thin ARQ task + DLQ wrapper + registration in `app/jobs/tasks.py` (mirror the spec-11 `enqueue(...)`/dispatcher pattern) (depends T017)
-- [ ] T019 [US1] Implement + register `on_report_approved` handler (enqueue `task_deliver_report`, `job_id=f"deliver:{report_id}"`) in `app/delivery/handlers.py` and `app/core/lifespan.py` (depends T018)
-- [ ] T020 [US1] Implement + register `on_client_reactivated` handler (re-enqueue held reports) in `app/delivery/handlers.py` and `app/core/lifespan.py` (depends T018)
-- [ ] T021 [US1] Implement `POST /clients/{client_id}/reports/{report_id}/delivery-callback` (`X-Delivery-Token` constant-time auth — **bypasses user-JWT auth, service-token only**, consider a slowapi rate limit; idempotent per `(report,channel)`; derive status; 404 unknown dispatch) in `app/delivery/routes.py` (depends T017)
-- [ ] T022 [US1] Implement `POST /clients/{client_id}/reports/{report_id}/resend` (`require_admin`; failed/unconfirmed channels only) in `app/delivery/routes.py` (depends T017)
-- [ ] T023 [US1] Raise + audit delivery events (dispatched/delivered/failed/held/resent), scrubbing `error`/`reason` via `app/redaction` (`scrub_text`) in `app/delivery/service.py` (depends T009, T017)
-- [ ] T024 [US1] Mount the `app/delivery/routes.py` router in the app and confirm RLS context applies to the new client-scoped paths in `app/main.py`
+- [x] T015 [P] [US1] Implement `render_report_document(report) -> str` (self-contained HTML; no PDF) in `app/delivery/rendering.py`
+- [x] T016 [P] [US1] Implement the n8n client — async `httpx` + `tenacity` (3 attempts, never 4xx), POST per channel, mockable — in `app/delivery/n8n_client.py`
+- [x] T017 [US1] Implement the delivery service (resolve configured channels per FR-003; dispatch; write/update `delivery_attempt` rows; derive report status; confirm/fail; resend failed-only; hold on no-channel/suspended with fresh-from-stored-state check) in `app/delivery/service.py` (depends T007, T015, T016)
+- [x] T018 [US1] Implement durable job `task_deliver_report` (render → dispatch → `sent`/`sent_at`; hold path) — job **body** in `app/delivery/service.py`, the thin ARQ task + DLQ wrapper + registration in `app/jobs/tasks.py` (mirror the spec-11 `enqueue(...)`/dispatcher pattern) (depends T017)
+- [x] T019 [US1] Implement + register `on_report_approved` handler (enqueue `task_deliver_report`, `job_id=f"deliver:{report_id}"`) in `app/delivery/handlers.py` and `app/core/lifespan.py` (depends T018)
+- [x] T020 [US1] Implement + register `on_client_reactivated` handler (re-enqueue held reports) in `app/delivery/handlers.py` and `app/core/lifespan.py` (depends T018)
+- [x] T021 [US1] Implement `POST /clients/{client_id}/reports/{report_id}/delivery-callback` (`X-Delivery-Token` constant-time auth — **bypasses user-JWT auth, service-token only**, consider a slowapi rate limit; idempotent per `(report,channel)`; derive status; 404 unknown dispatch) in `app/delivery/routes.py` (depends T017)
+- [x] T022 [US1] Implement `POST /clients/{client_id}/reports/{report_id}/resend` (`require_admin`; failed/unconfirmed channels only) in `app/delivery/routes.py` (depends T017)
+- [x] T023 [US1] Raise + audit delivery events (dispatched/delivered/failed/held/resent), scrubbing `error`/`reason` via `app/redaction` (`scrub_text`) in `app/delivery/service.py` (depends T009, T017)
+- [x] T024 [US1] Mount the `app/delivery/routes.py` router in the app and confirm RLS context applies to the new client-scoped paths in `app/main.py`
 
 **Checkpoint**: 🎯 MVP — a real approved report reaches the client and resolves to delivered/failed.
 
