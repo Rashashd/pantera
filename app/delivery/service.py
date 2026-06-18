@@ -346,6 +346,25 @@ async def handle_callback(
     )
 
 
+async def mark_no_callback_failed(
+    session: AsyncSession,
+    report: Report,
+    dispatcher: Any,
+    *,
+    actor_id: int = _SYSTEM_ACTOR_ID,
+    actor_type: str = _SYSTEM_ACTOR_TYPE,
+) -> ReportStatus:
+    """Flip a stale `sent` report to delivery_failed when no callback arrived (FR-006a)."""
+    for attempt in await _load_attempts(session, report.id):
+        if attempt.status == "pending":
+            attempt.status = "failed"
+            attempt.confirmed_at = _now()
+            attempt.error = "no delivery callback within window"
+    return await _finalize_status(
+        session, report, dispatcher, actor_id=actor_id, actor_type=actor_type
+    )
+
+
 def resend_channels_remaining(attempts: Iterable[DeliveryAttempt]) -> bool:
     """Whether any channel is still re-sendable (not delivered) — else nothing to re-send."""
     return any(a.status != "delivered" for a in attempts)

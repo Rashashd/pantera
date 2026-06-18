@@ -494,6 +494,16 @@ async def task_deliver_report(
     _log.info("task_deliver_report.done", report_id=report_id, resend=resend)
 
 
+# ── task_delivery_sla_sweep (cron) ────────────────────────────────────────────
+
+
+async def task_delivery_sla_sweep(ctx: dict) -> None:
+    """Cron: no-callback timeout flips + tiered SLA escalation sweep (spec 13 US3)."""
+    from app.delivery.sweep import run_sla_sweep
+
+    await run_sla_sweep(WorkerContext(ctx))
+
+
 # ── Register all tasks for inline mode ───────────────────────────────────────
 register_task("task_run_ingestion", task_run_ingestion)
 register_task("task_index_build", task_index_build)

@@ -112,14 +112,14 @@ description: "Task list for 013-delivery implementation"
 
 ### Tests for User Story 3
 
-- [ ] T033 [P] [US3] Integration test: no-callback sweep flips `sent`→`delivery_failed` after the window; Tier-1 (reviewers) then Tier-2 (manager/admin) each fire once; actioned + non-expedited never escalate in `tests/integration/test_sla_sweep.py`
+- [x] T033 [P] [US3] Integration test: no-callback sweep flips `sent`→`delivery_failed` after the window; Tier-1 (reviewers) then Tier-2 (manager/admin) each fire once; actioned + non-expedited never escalate in `tests/integration/test_sla_sweep.py`
 
 ### Implementation for User Story 3
 
-- [ ] T034 [US3] Implement the sweep (no-callback timeout flip + tiered SLA escalation; track `sla_escalation_tier`/`sla_escalated_at`; at-most-once per tier) in `app/delivery/sweep.py` (depends T006, T017)
-- [ ] T035 [US3] Implement escalation + delivery-failure notifications (to the client's reviewers / manager+admin via the n8n client) in `app/delivery/notifications.py` (depends T016)
-- [ ] T036 [US3] Register the `task_delivery_sla_sweep` cron (default every 15 min) in `worker/worker.py` `_cron_jobs` (depends T034)
-- [ ] T037 [US3] Raise + audit `SlaEscalated` and the delivery-failure alert through the dispatcher in `app/delivery/sweep.py` (depends T009)
+- [x] T034 [US3] Implement the sweep (no-callback timeout flip + tiered SLA escalation; track `sla_escalation_tier`/`sla_escalated_at`; at-most-once per tier) in `app/delivery/sweep.py` (depends T006, T017)
+- [x] T035 [US3] Implement escalation + delivery-failure notifications (to the client's reviewers / manager+admin via the n8n client) in `app/delivery/notifications.py` (depends T016)
+- [x] T036 [US3] Register the `task_delivery_sla_sweep` cron (default every 15 min) in `worker/worker.py` `_cron_jobs` (depends T034)
+- [x] T037 [US3] Raise + audit `SlaEscalated` and the delivery-failure alert through the dispatcher in `app/delivery/sweep.py` (depends T009)
 
 **Checkpoint**: no send sits unconfirmed forever; overdue expedited reports climb the ladder.
 

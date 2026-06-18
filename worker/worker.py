@@ -61,6 +61,7 @@ from app.jobs.tasks import (  # noqa: E402
     task_consolidate,
     task_cycle_start,
     task_deliver_report,
+    task_delivery_sla_sweep,
     task_expedited,
     task_index_build,
     task_redraft,
@@ -72,9 +73,13 @@ _settings = get_settings()
 try:
     from arq import cron as _arq_cron
 
+    # Sweep cadence: fire at every Nth minute of the hour (default every 15 min).
+    _sweep_minutes = set(range(0, 60, max(1, _settings.delivery_sweep_interval_minutes)))
+
     _cron_jobs = [
         _arq_cron(scheduler_tick, minute=_settings.scheduler_tick_cron_minute),
         _arq_cron(purge_expired, hour=3, minute=0),
+        _arq_cron(task_delivery_sla_sweep, minute=_sweep_minutes),
     ]
 except Exception:  # arq not available during unit tests
     _cron_jobs = []
