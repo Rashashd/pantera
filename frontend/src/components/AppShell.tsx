@@ -11,6 +11,8 @@ import {
   ScrollText,
   Settings,
   Shield,
+  UserCog,
+  Users,
   X,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
@@ -63,6 +65,18 @@ const NAV_ITEMS: NavItem[] = [
     label: "Admin Console",
     href: "/admin",
     icon: <Settings className="h-5 w-5" />,
+    roles: ["manager", "admin"],
+  },
+  {
+    label: "Staff",
+    href: "/admin/staff",
+    icon: <Users className="h-5 w-5" />,
+    roles: ["manager"],
+  },
+  {
+    label: "Client Users",
+    href: "/admin/users",
+    icon: <UserCog className="h-5 w-5" />,
     roles: ["manager", "admin"],
   },
   {

@@ -137,10 +137,10 @@ description: "Task list for 013-delivery implementation"
 
 ### Implementation for User Story 4
 
-- [ ] T039 [P] [US4] Add API hooks + schemas for `/staff` CRUD and `/clients/{id}/users` CRUD in `frontend/src/api/hooks.ts` and `frontend/src/api/schemas.ts`
-- [ ] T040 [US4] Build `StaffPage` (list/create/deactivate staff; role select; initial password set by creator) in `frontend/src/pages/StaffPage.tsx` (depends T039)
-- [ ] T041 [US4] Build `ClientUsersPage` (list/create/deactivate per-client users; scope/min_severity/watchlist; initial password) in `frontend/src/pages/ClientUsersPage.tsx` (depends T039)
-- [ ] T042 [US4] Add routes (`/staff`, `/clients/:clientId/users`) + role-gated nav entries in `frontend/src/routes.tsx` and `frontend/src/components/AppShell.tsx` (depends T040, T041)
+- [x] T039 [P] [US4] Add API hooks + schemas for `/staff` CRUD and `/clients/{id}/users` CRUD in `frontend/src/api/hooks.ts` and `frontend/src/api/schemas.ts`
+- [x] T040 [US4] Build `StaffPage` (list/create/deactivate staff; role select; initial password set by creator) in `frontend/src/pages/StaffPage.tsx` (depends T039)
+- [x] T041 [US4] Build `ClientUsersPage` (list/create/deactivate per-client users; scope/min_severity/watchlist; initial password) in `frontend/src/pages/ClientUsersPage.tsx` (depends T039)
+- [x] T042 [US4] Add routes (`/staff`, `/clients/:clientId/users`) + role-gated nav entries in `frontend/src/routes.tsx` and `frontend/src/components/AppShell.tsx` (depends T040, T041)
 
 **Checkpoint**: the platform is operable without scripted accounts.
 

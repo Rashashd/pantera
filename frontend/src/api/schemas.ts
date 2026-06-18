@@ -161,6 +161,30 @@ export const UserSchema = z.object({
 });
 export type User = z.infer<typeof UserSchema>;
 
+// --- Account management (spec 13 US4) ---
+
+export const StaffUserSchema = z.object({
+  id: z.number(),
+  email: z.string(),
+  role: z.string(),
+  user_type: z.string(),
+  is_active: z.boolean(),
+  created_at: z.string().nullable().optional(),
+});
+export type StaffUser = z.infer<typeof StaffUserSchema>;
+
+export const ClientUserSchema = z.object({
+  id: z.number(),
+  email: z.string(),
+  client_id: z.number(),
+  role: z.string(),
+  client_scope: z.string().nullable().optional(),
+  min_severity: z.string().nullable().optional(),
+  watchlist_ids: z.array(z.number()),
+  is_active: z.boolean(),
+});
+export type ClientUser = z.infer<typeof ClientUserSchema>;
+
 // --- Client (admin console) ---
 
 export const ClientSchema = z.object({
