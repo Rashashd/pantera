@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import importlib.metadata as importlib_metadata
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -70,3 +70,71 @@ def test_skips_when_pins_empty():
             embedder_tokenizer_path="/no/such/tokenizer.json",
         )
     )
+
+
+# ---------------------------------------------------------------------------
+# Index-time remote check: verify_served_model_versions pins the modelserver's
+# reported embedder/classifier/reranker hashes (Step 1b / Q-B Option 1).
+# ---------------------------------------------------------------------------
+
+
+def _ms_settings(**overrides) -> SimpleNamespace:
+    base = {
+        "embedder_model_version": "",
+        "classifier_model_version": "",
+        "reranker_model_version": "",
+    }
+    base.update(overrides)
+    return SimpleNamespace(**base)
+
+
+def _ready(**shas) -> dict:
+    return {"models": {name: {"sha256": sha} for name, sha in shas.items()}}
+
+
+@pytest.mark.asyncio
+async def test_verify_served_versions_all_match():
+    """All three reported hashes match their pins → no raise."""
+    from app.embedding.tokenizer import verify_served_model_versions
+
+    client = AsyncMock()
+    client.get_ready.return_value = _ready(embedder="e", classifier="c", reranker="r")
+    settings = _ms_settings(
+        embedder_model_version="e", classifier_model_version="c", reranker_model_version="r"
+    )
+    await verify_served_model_versions(client, settings)
+
+
+@pytest.mark.asyncio
+async def test_verify_served_versions_classifier_mismatch():
+    """A classifier hash that differs from its pin raises (modelserver serving a wrong version)."""
+    from app.embedding.tokenizer import TokenizerError, verify_served_model_versions
+
+    client = AsyncMock()
+    client.get_ready.return_value = _ready(embedder="e", classifier="WRONG", reranker="r")
+    settings = _ms_settings(
+        embedder_model_version="e", classifier_model_version="c", reranker_model_version="r"
+    )
+    with pytest.raises(TokenizerError, match="classifier version mismatch"):
+        await verify_served_model_versions(client, settings)
+
+
+@pytest.mark.asyncio
+async def test_verify_served_versions_no_pins_skips_ready():
+    """When nothing is pinned, /ready is not even called."""
+    from app.embedding.tokenizer import verify_served_model_versions
+
+    client = AsyncMock()
+    await verify_served_model_versions(client, _ms_settings())
+    client.get_ready.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_verify_served_versions_missing_reported_hash():
+    """A pinned artifact the modelserver does not report raises (absence)."""
+    from app.embedding.tokenizer import TokenizerError, verify_served_model_versions
+
+    client = AsyncMock()
+    client.get_ready.return_value = {"models": {}}
+    with pytest.raises(TokenizerError, match="reranker version not reported"):
+        await verify_served_model_versions(client, _ms_settings(reranker_model_version="r"))

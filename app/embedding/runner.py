@@ -16,7 +16,7 @@ from app.embedding.document_indexer import process_document
 from app.embedding.enums import IndexBuildRunStatus
 from app.embedding.models import IndexBuildRun
 from app.embedding.service import IndexBuildService
-from app.embedding.tokenizer import EmbedderTokenizer
+from app.embedding.tokenizer import EmbedderTokenizer, verify_served_model_versions
 from app.infra.modelserver_client import ModelserverClient
 
 _log = structlog.get_logger(__name__)
@@ -66,20 +66,16 @@ async def index_build_runner(
             max_tokens=settings.chunk_max_tokens,
         )
 
-        # Verify embedder version at startup (FR-025)
-        if settings.embedder_model_version:
-            try:
-                await EmbedderTokenizer.verify_embedder_version(
-                    modelserver_client, settings.embedder_model_version
-                )
-            except Exception as e:
-                _log.error("embedder version mismatch", error=str(e), exc_info=True)
-                async with session_factory() as session:
-                    async with session.begin():
-                        await IndexBuildService.finish_run(
-                            session, run_id, IndexBuildRunStatus.FAILED
-                        )
-                return run
+        # Verify the served model versions (embedder/classifier/reranker) match the pinned hashes
+        # before indexing — a modelserver serving an unexpected version fails the run (FR-025 / H1).
+        try:
+            await verify_served_model_versions(modelserver_client, settings)
+        except Exception as e:
+            _log.error("model version mismatch", error=str(e), exc_info=True)
+            async with session_factory() as session:
+                async with session.begin():
+                    await IndexBuildService.finish_run(session, run_id, IndexBuildRunStatus.FAILED)
+            return run
 
         # Get documents to index (watchlist-scoped for cycles, client-wide for manual)
         async with session_factory() as session:
