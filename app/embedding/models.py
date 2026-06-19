@@ -101,6 +101,9 @@ class DocumentIndexState(Base):
         DateTime(timezone=True), nullable=True
     )
     triage_error: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Set when triage RAN for this document (whether or not it produced findings); lets the
+    # staleness sweep tell a legitimately-zero-finding document from a never-triaged one.
+    triaged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_run_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("index_build_runs.id", ondelete="SET NULL"), nullable=True
     )

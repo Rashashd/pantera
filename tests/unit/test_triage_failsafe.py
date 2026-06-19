@@ -455,3 +455,35 @@ async def test_finding_event_carries_classifier_version():
     dispatcher.dispatch.assert_awaited_once()
     event = dispatcher.dispatch.call_args.args[0]
     assert event.classifier_version == "clf-sha-777"
+
+
+@pytest.mark.asyncio
+async def test_mark_triage_succeeded_sets_triaged_and_clears_degraded():
+    """A successful triage records triaged_at and clears any prior degraded marker.
+
+    This is what lets the staleness sweep avoid re-triaging a legitimately-zero-finding document.
+    """
+    from types import SimpleNamespace
+
+    from app.embedding import triage_trigger
+
+    state = SimpleNamespace(
+        triaged_at=None, triage_failed_at="2026-01-01", triage_error="ner_unavailable"
+    )
+    document = SimpleNamespace(id=5)
+
+    session = MagicMock()
+    session.begin = lambda: _acm(None)
+
+    def session_factory():
+        return _acm(session)
+
+    with patch(
+        "app.embedding.service.IndexBuildService.get_or_create_index_state",
+        new=AsyncMock(return_value=state),
+    ):
+        await triage_trigger._mark_triage_succeeded(session_factory, document, client_id=1)
+
+    assert state.triaged_at is not None
+    assert state.triage_failed_at is None
+    assert state.triage_error is None

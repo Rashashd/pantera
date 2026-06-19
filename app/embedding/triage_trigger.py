@@ -53,6 +53,39 @@ async def _mark_triage_degraded(
         )
 
 
+async def _mark_triage_succeeded(
+    session_factory: Callable[[], AsyncSession],
+    document: Any,
+    client_id: int,
+) -> None:
+    """Mark that triage RAN for this document (triaged_at) and clear any prior degraded marker.
+
+    Lets the staleness sweep tell a legitimately-zero-finding document (triaged, nothing found)
+    apart from one that was never triaged — without it the sweep would re-triage every clean
+    document forever. Best-effort: a marker-write failure must not crash the index loop.
+    """
+    from datetime import UTC, datetime
+
+    from app.embedding.service import IndexBuildService
+
+    try:
+        async with session_factory() as session:
+            async with session.begin():
+                state = await IndexBuildService.get_or_create_index_state(
+                    session, document.id, client_id
+                )
+                state.triaged_at = datetime.now(UTC)
+                state.triage_failed_at = None
+                state.triage_error = None
+    except Exception:
+        _log.error(
+            "triage.triaged_mark_failed",
+            document_id=document.id,
+            client_id=client_id,
+            exc_info=True,
+        )
+
+
 async def _enqueue_expedited_drafts(outcomes: list, *, app_state: Any, client_id: int) -> None:
     """Enqueue a durable expedited draft for each urgent/emergency finding (spec 11 site 5).
 
@@ -134,6 +167,9 @@ async def trigger_triage(
                 document_id=document.id,
                 client_id=client_id,
             )
+            # Triage ran and correctly had nothing to do — mark triaged so the sweep does not
+            # re-flag a document whose watchlists simply carry no drug items.
+            await _mark_triage_succeeded(session_factory, document, client_id)
             return
 
         outcomes = await triage_document_runner(
@@ -160,6 +196,10 @@ async def trigger_triage(
         # document is already indexed; the staleness sweep is the backstop if this write fails).
         await _mark_triage_degraded(session_factory, document, client_id, exc)
         return
+
+    # Triage ran to completion — record it (and clear any stale degraded marker) so the staleness
+    # sweep does not re-triage this document on a future pass.
+    await _mark_triage_succeeded(session_factory, document, client_id)
 
     # Enqueue durable expedited drafting OUTSIDE the triage try/except: a PENDING_EXPEDITED finding
     # with no draft is the orphan to avoid (no report → no SLA), so an enqueue failure must surface
