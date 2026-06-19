@@ -118,4 +118,12 @@ async def run_triage_sweep(wc: Any) -> dict[str, int]:
 
     if untriaged or orphaned:
         _log.info("triage.sweep.done", **result)
+        # The backstop firing means something upstream silently failed to triage — page it (A2).
+        from app.observability.sentry import capture_operator_alert
+
+        capture_operator_alert(
+            "triage.sweep.remediated",
+            retriaged=result["retriaged"],
+            reexpedited=result["reexpedited"],
+        )
     return result

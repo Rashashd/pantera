@@ -9,6 +9,7 @@ from app.core.config import Settings
 from app.core.dispatcher import EventDispatcher
 from app.domain.events import FindingClassified
 from app.infra.modelserver_client import ModelserverClient, ModelserverError
+from app.observability.sentry import capture_operator_alert
 from app.triage import llm as llm_module
 from app.triage import prefilter
 from app.triage.classify import resolve_adverse
@@ -56,6 +57,13 @@ async def triage_document(
             reason=str(exc),
             client_id=client_id,
             document_id=document_id,
+        )
+        capture_operator_alert(
+            "triage.operator_alert",
+            stage="ner",
+            client_id=client_id,
+            document_id=document_id,
+            error_class=type(exc).__name__,
         )
         raise
     log.info("triage.ner.extracted", drugs=len(drugs_found), reactions=len(reactions_found))
@@ -160,6 +168,13 @@ async def _triage_one(
             client_id=client_id,
             document_id=document_id,
         )
+        capture_operator_alert(
+            "triage.operator_alert",
+            stage="classify",
+            client_id=client_id,
+            document_id=document_id,
+            error_class=type(exc).__name__,
+        )
         # No classifier_version: the classifier never ran (a NULL version is how a triage-outage
         # escalation is told apart from a low-confidence one in the finding/audit record).
         verdict, model_confidence, resolution_path, classifier_version = (
@@ -234,6 +249,13 @@ async def _triage_one(
             reason=str(exc),
             client_id=client_id,
             document_id=document_id,
+        )
+        capture_operator_alert(
+            "triage.operator_alert",
+            stage="persist",
+            client_id=client_id,
+            document_id=document_id,
+            error_class=type(exc).__name__,
         )
         raise  # trigger transaction rollback (no finding without its audit row)
 

@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infra.modelserver_client import ModelserverClient
+from app.observability.sentry import capture_operator_alert
 
 _log = structlog.get_logger(__name__)
 
@@ -51,6 +52,11 @@ async def _mark_triage_degraded(
             client_id=client_id,
             exc_info=True,
         )
+        capture_operator_alert(
+            "triage.degraded_mark_failed",
+            document_id=document.id,
+            client_id=client_id,
+        )
 
 
 async def _mark_triage_succeeded(
@@ -83,6 +89,11 @@ async def _mark_triage_succeeded(
             document_id=document.id,
             client_id=client_id,
             exc_info=True,
+        )
+        capture_operator_alert(
+            "triage.triaged_mark_failed",
+            document_id=document.id,
+            client_id=client_id,
         )
 
 
@@ -121,6 +132,13 @@ async def _enqueue_expedited_drafts(outcomes: list, *, app_state: Any, client_id
                 finding_id=outcome.finding_id,
                 reason=str(exc),
                 client_id=client_id,
+            )
+            capture_operator_alert(
+                "triage.operator_alert",
+                stage="expedited_enqueue",
+                finding_id=outcome.finding_id,
+                client_id=client_id,
+                error_class=type(exc).__name__,
             )
 
 
@@ -190,6 +208,12 @@ async def trigger_triage(
             client_id=client_id,
             error=str(exc),
             exc_info=True,
+        )
+        capture_operator_alert(
+            "triage.after_index.failed",
+            document_id=document.id,
+            client_id=client_id,
+            error_class=type(exc).__name__,
         )
         # Fail SAFE (Constitution III): record a durable degraded marker so the cycle cannot be
         # reported 'completed' clean. Best-effort — never raise out of the after-index hook (the

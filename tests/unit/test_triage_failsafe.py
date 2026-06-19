@@ -531,3 +531,23 @@ async def test_run_triage_sweep_remediates_untriaged_and_orphans():
     # Deterministic, idempotent job_ids (a sweep overlapping an in-flight job is a no-op).
     job_ids = {e[1] for e in enqueued}
     assert {"retriage:10", "retriage:11", "expedited:99:0"} <= job_ids
+
+
+# ---------------------------------------------------------------------------
+# Operator-alert surfacing — handled triage failures reach Sentry (not just stdout),
+# so a silent classifier/NER outage pages instead of passing unnoticed (audit A2).
+# ---------------------------------------------------------------------------
+
+
+def test_capture_operator_alert_sends_error_message():
+    """capture_operator_alert sends an error-level Sentry message (PII-free tags)."""
+    from app.observability import sentry as sentry_mod
+
+    with patch.object(sentry_mod.sentry_sdk, "capture_message") as cap:
+        sentry_mod.capture_operator_alert(
+            "triage.operator_alert", stage="classify", client_id=7, document_id=None
+        )
+
+    cap.assert_called_once()
+    assert cap.call_args.args[0] == "triage.operator_alert"
+    assert cap.call_args.kwargs.get("level") == "error"
