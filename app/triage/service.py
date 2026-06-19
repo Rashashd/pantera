@@ -107,7 +107,9 @@ async def _triage_one(
 ) -> FindingOutcome | None:
     """Classify a single drug+reaction pair and persist the finding.
 
-    Returns None when the classifier is unavailable (operator_alert emitted; finding skipped).
+    On classifier OUTAGE (ModelserverError) the verdict is forced to YES and escalated
+    (resolution_path="escalated") rather than skipped — a classifier failure MUST escalate,
+    not suppress (Constitution III) — mirroring the low-confidence path in classify.py:55-57.
     Raises on DB/persist failure so the caller's transaction rolls back (FR-018).
     """
 
@@ -134,6 +136,10 @@ async def _triage_one(
             document_id=document_id,
         )
     except ModelserverError as exc:
+        # Fail SAFE (Constitution III): a classifier OUTAGE must escalate, never suppress.
+        # Mirror the low-confidence+LLM-failure path (classify.py:55-57): force verdict=YES with
+        # resolution_path="escalated" and no model confidence, so the pair is still severity-
+        # bucketed, persisted, and surfaced to a human instead of being silently dropped.
         log.error(
             "triage.operator_alert",
             stage="classify",
@@ -141,7 +147,7 @@ async def _triage_one(
             client_id=client_id,
             document_id=document_id,
         )
-        return None
+        verdict, model_confidence, resolution_path = True, None, "escalated"
 
     # --- Stage 4: Severity bucketing ---
     if verdict:

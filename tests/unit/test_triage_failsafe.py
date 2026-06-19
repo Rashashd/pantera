@@ -97,14 +97,21 @@ async def test_valence_llm_failure_defaults_to_positive():
 
 
 # ---------------------------------------------------------------------------
-# Classifier (ModelserverError) failure — service._triage_one must return None
-# and emit triage.operator_alert (stage=classify).
+# Classifier (ModelserverError) failure — service._triage_one must ESCALATE the
+# pair (verdict=YES, resolution_path="escalated"), NEVER silently suppress it
+# (Constitution III). Severity bucketing still runs during the outage.
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_classifier_error_returns_none_and_logs_alert():
-    """ModelserverError → _triage_one returns None + operator_alert logged (stage=classify)."""
+async def test_classifier_outage_escalates_not_suppressed():
+    """ModelserverError (classifier down) → the pair is escalated, NOT dropped.
+
+    A classifier OUTAGE must escalate (verdict=YES, resolution_path="escalated"), never return
+    None / skip the finding. Severity bucketing still runs, so an emergency keyword still routes
+    PENDING_EXPEDITED — and the operator alert is still emitted so the outage is visible to ops.
+    """
+    from app.triage.enums import Bucket, FindingStatus
     from app.triage.service import _triage_one
 
     ms_client = AsyncMock()
@@ -116,26 +123,44 @@ async def test_classifier_error_returns_none_and_logs_alert():
     settings.triage_confidence_threshold = 0.70
     log = MagicMock()
 
-    result = await _triage_one(
-        session=session,
-        document_id=42,
-        client_id=7,
-        drug="ibuprofen",
-        reaction="bleeding",
-        document_text="Patient had bleeding after ibuprofen.",
-        source_reliability="peer_reviewed",
-        custom_keywords=[],
-        ms_client=ms_client,
-        settings=settings,
-        dispatcher=dispatcher,
-        log=log,
-    )
+    with patch(
+        "app.triage.service.upsert_finding",
+        new=AsyncMock(return_value=(123, True)),
+    ):
+        result = await _triage_one(
+            session=session,
+            document_id=42,
+            client_id=7,
+            drug="ibuprofen",
+            reaction="anaphylaxis",
+            document_text="Patient suffered anaphylaxis after ibuprofen.",
+            source_reliability="peer_reviewed",
+            custom_keywords=[],
+            ms_client=ms_client,
+            settings=settings,
+            dispatcher=dispatcher,
+            log=log,
+        )
 
-    assert result is None
+    # SAFE outcome: a finding exists, escalated, and human-visible — never suppressed.
+    assert result is not None
+    assert result.resolution_path == "escalated"
+    assert result.model_confidence is None
+    assert result.finding_id == 123
+    assert result.bucket == Bucket.EMERGENCY  # "anaphylaxis" is an ICH emergency keyword
+    assert result.status == FindingStatus.PENDING_EXPEDITED
+
+    # Operator alert still emitted (stage=classify) so the outage pages, not just suppresses.
     log.error.assert_called_once()
-    call_kwargs = log.error.call_args
-    assert call_kwargs[0][0] == "triage.operator_alert"
-    assert call_kwargs[1]["stage"] == "classify"
+    alert = log.error.call_args
+    assert alert.args[0] == "triage.operator_alert"
+    assert alert.kwargs["stage"] == "classify"
+
+    # The finding's audit event records the escalation outcome.
+    dispatcher.dispatch.assert_awaited_once()
+    event = dispatcher.dispatch.call_args.args[0]
+    assert event.resolution_path == "escalated"
+    assert event.routing_outcome == FindingStatus.PENDING_EXPEDITED.value
 
 
 # ---------------------------------------------------------------------------
