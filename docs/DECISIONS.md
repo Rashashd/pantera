@@ -75,8 +75,14 @@ Full rationale in `specs/005-modelserver/research.md` (D1–D16).
   is owned by the calling spec (Spec 6 / guardrails). Locked in D2.
 - **Stateless, no DB** — modelserver holds no mutable state; all inference is ephemeral.
   Restartable with zero migration burden. Locked in D7.
-- **Startup SHA-256 validation refuses boot** — prevents serving from a partial or tampered
-  artifact set; refuse-boot is non-negotiable (FR-010/D4). Secrets from Vault via hvac (D5).
+- **Startup SHA-256 validation refuses boot** — the modelserver validates its served ONNX
+  artifacts (classifier/embedder/tokenizer) against `manifest.json` and refuses to start on any
+  mismatch or missing/partial artifact (`modelserver/core/startup.validate_artifacts`, FR-010/D4).
+  The *app* side (Cluster 2 / H1) likewise boot-validates the artifacts it loads in-process — the
+  scispaCy NER model (pinned package version) and the embedder tokenizer (SHA-256) — via
+  `app/core/startup.check_model_artifacts`, and pin-checks the modelserver's reported model
+  versions (embedder/classifier/reranker) at index time (`verify_served_model_versions`). Each
+  component validates what it loads; refuse-boot is non-negotiable. Secrets from Vault via hvac (D5).
 - **Lean image via uv group isolation** — `uv sync --only-group modelserver --no-install-project`
   installs only the 9-package serving set; torch/transformers live in `training` group (offline
   only). Target < 500 MB (D1).

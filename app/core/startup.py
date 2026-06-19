@@ -1,5 +1,9 @@
 """Secret loading from Vault and fail-fast startup validation checks."""
 
+import hashlib
+from importlib import metadata as importlib_metadata
+from pathlib import Path
+
 import hvac
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -74,9 +78,46 @@ async def check_redis(redis) -> None:
     await redis.ping()
 
 
+class ModelIntegrityError(RuntimeError):
+    """A pinned model artifact is missing or its hash/version does not match (FR-005)."""
+
+
 def check_model_artifacts(settings: Settings) -> None:
-    """Verify model-artifact hashes when artifacts exist; no-op when absent (FR-005)."""
-    return None
+    """Refuse boot if an app-local model artifact is missing or fails its pinned check (FR-005).
+
+    Validates the artifacts the APP loads in-process: the embedder tokenizer (SHA-256 of the local
+    file) and the scispaCy NER model (pinned package version — it ships as a pip package, not one
+    file). The served ONNX artifacts (classifier/embedder/reranker) live in the modelserver, which
+    SHA-256-validates them at ITS own boot; the app pin-checks the modelserver's reported hashes at
+    index time. A pinned value of "" disables that artifact's check.
+    """
+    # Embedder tokenizer — SHA-256 of the local file the app loads for token counting.
+    if settings.embedder_tokenizer_sha256:
+        path = Path(settings.embedder_tokenizer_path)
+        if not path.exists():
+            raise ModelIntegrityError(
+                f"Tokenizer artifact missing at {settings.embedder_tokenizer_path}"
+            )
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual != settings.embedder_tokenizer_sha256:
+            raise ModelIntegrityError(
+                f"Tokenizer SHA-256 mismatch: expected {settings.embedder_tokenizer_sha256}, "
+                f"got {actual}"
+            )
+
+    # NER model — pinned scispaCy package version (a pip package, not a single ONNX file).
+    if settings.ner_model_version:
+        try:
+            installed = importlib_metadata.version("en_ner_bc5cdr_md")
+        except importlib_metadata.PackageNotFoundError as exc:
+            raise ModelIntegrityError("NER model 'en_ner_bc5cdr_md' is not installed") from exc
+        if installed != settings.ner_model_version:
+            raise ModelIntegrityError(
+                f"NER model version mismatch: expected {settings.ner_model_version}, "
+                f"got {installed}"
+            )
+
+    _log.info("startup.model_artifacts.validated")
 
 
 def check_security_boundary(settings: Settings) -> None:

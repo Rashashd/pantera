@@ -62,6 +62,18 @@ class Settings(BaseSettings):
     # --- Embedding: RAG index configuration (spec 6) ---
     embedder_tokenizer_path: str = "modelserver/models/tokenizer.json"  # tokenizer.json path
     embedder_model_version: str = ""  # pinned embedder SHA-256; from Vault (M3: fail-fast)
+    # --- Model-integrity pins (Cluster 2 / H1; fail-fast) ---
+    # App-local artifacts the app loads in-process — enforced by DEFAULT (build-time known values).
+    # check_model_artifacts() refuses boot on mismatch/absence; "" disables that artifact's check.
+    ner_model_version: str = "0.5.4"  # pinned en_ner_bc5cdr_md (scispaCy) package version
+    embedder_tokenizer_sha256: str = (
+        "9355eae89d401cee6b1f7c9acaf4791191e3b22c918e5f616b6baea13b66e748"
+    )
+    # Remote modelserver artifacts — pin-checked against /ready at index time; "" = skip (Vault-
+    # provided, like embedder_model_version). The modelserver SHA-256-validates its own ONNX files
+    # at its boot; these catch the modelserver serving an UNEXPECTED version.
+    classifier_model_version: str = ""  # pinned classifier SHA-256
+    reranker_model_version: str = ""  # pinned reranker SHA-256
     chunk_target_tokens: int = 256  # target chunk size in tokens (approximate)
     chunk_overlap_ratio: float = 0.15  # overlap as fraction of target (15%)
     chunk_max_tokens: int = 512  # hard cap; chunks never exceed this

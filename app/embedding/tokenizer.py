@@ -4,6 +4,7 @@ from pathlib import Path
 
 from tokenizers import Tokenizer  # type: ignore
 
+from app.core.config import Settings
 from app.infra.modelserver_client import ModelserverClient
 
 
@@ -33,14 +34,30 @@ class EmbedderTokenizer:
         tokens = self.tokenizer.encode(text, add_special_tokens=False)
         return len(tokens.ids) + 2
 
-    @staticmethod
-    async def verify_embedder_version(client: ModelserverClient, expected_version: str) -> None:
-        """Verify the embedder's version matches expected SHA-256 (FR-025)."""
-        ready_json = await client.get_ready()
-        actual_version = ready_json.get("models", {}).get("embedder", {}).get("sha256")
-        if not actual_version:
-            raise TokenizerError("Embedder version not found in modelserver ready response")
-        if actual_version != expected_version:
-            raise TokenizerError(
-                f"Embedder version mismatch: expected {expected_version}, got {actual_version}"
-            )
+
+async def verify_served_model_versions(client: ModelserverClient, settings: Settings) -> None:
+    """Verify the modelserver's reported artifact hashes match the pinned versions (FR-025 / H1).
+
+    Checks the embedder, classifier, and reranker /ready SHA-256s against their config pins in a
+    SINGLE /ready call. A pin of "" skips that artifact (and if nothing is pinned, /ready is not
+    called). Raises TokenizerError on a mismatch or a missing reported hash so the caller can fail
+    the run — the modelserver is serving an UNEXPECTED model version (the modelserver self-validates
+    its files at its own boot; this catches a wrong *version* being served to this app).
+    """
+    pins = {
+        "embedder": settings.embedder_model_version,
+        "classifier": settings.classifier_model_version,
+        "reranker": settings.reranker_model_version,
+    }
+    if not any(pins.values()):
+        return
+    ready_json = await client.get_ready()
+    models = ready_json.get("models", {})
+    for name, expected in pins.items():
+        if not expected:
+            continue
+        actual = models.get(name, {}).get("sha256")
+        if not actual:
+            raise TokenizerError(f"{name} version not reported by modelserver /ready")
+        if actual != expected:
+            raise TokenizerError(f"{name} version mismatch: expected {expected}, got {actual}")
