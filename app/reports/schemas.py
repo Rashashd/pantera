@@ -181,6 +181,8 @@ class PortalReportSummary(BaseModel):
     report_type: ReportType
     status: ReportStatus
     delivery_status: str
+    # Highest-severity included-finding bucket (emergency/urgent/minor/positive); None if none.
+    severity: str | None = None
     watchlist_id: int | None
     corroboration_count: int
     sla_deadline: datetime | None

@@ -143,6 +143,7 @@ export const PortalReportSummarySchema = z.object({
   report_type: ReportType,
   status: ReportStatus,
   delivery_status: DeliveryStatus,
+  severity: FindingBucket.nullable().optional(),
   watchlist_id: z.number().nullable().optional(),
   corroboration_count: z.number(),
   sla_deadline: z.string().nullable().optional(),
