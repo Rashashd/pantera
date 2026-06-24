@@ -5,7 +5,7 @@ Runnable validation scenarios that prove spec 013 end-to-end. Implementation det
 ## Prerequisites
 
 - `docker compose up` (api, worker, postgres, redis, modelserver, guardrails) + Vault seeded (`scripts/write_secrets.py`).
-- `uv run alembic upgrade head` reaches **0012** (the `pantera_app` role must exist first — see [[spec-012-security-hardening-handoff]]).
+- `uv run alembic upgrade head` reaches **0012** (the `vespera_app` role must exist first — see [[spec-012-security-hardening-handoff]]).
 - A seeded client with a `report_email_regular`, a reviewer, and a client-user; a drafted report in `under_review`.
 - `GUARDRAILS_ENABLED=false` in `tests/conftest.py` (unchanged); `TRACING_ENABLED=false` by default.
 
@@ -15,7 +15,7 @@ Runnable validation scenarios that prove spec 013 end-to-end. Implementation det
 uv run alembic upgrade head          # applies 0012_delivery
 uv run pytest tests/unit -q          # fast unit gates (tracing, status derivation, rendering, sweep)
 # Integration (live DB/Redis, n8n mocked):
-PANTERA_INTEGRATION=1 uv run pytest tests/integration/test_delivery.py -q
+VESPERA_INTEGRATION=1 uv run pytest tests/integration/test_delivery.py -q
 ```
 
 ## Scenario A — Approve → deliver → confirm (US1, P1)
@@ -67,7 +67,7 @@ PANTERA_INTEGRATION=1 uv run pytest tests/integration/test_delivery.py -q
 ```bash
 uv run pytest tests/unit/test_tracing_config.py -q     # enabled+key sets LANGCHAIN_*, disabled/empty = no-op
 ```
-- With `TRACING_ENABLED=true` + a key: a worker-executed triage/agent call produces a run in the LangSmith `pantera` project; the run carries only `{client_id, max_tokens}` / `{redacted: true}` / Presidio-redacted messages — no PII.
+- With `TRACING_ENABLED=true` + a key: a worker-executed triage/agent call produces a run in the LangSmith `vespera` project; the run carries only `{client_id, max_tokens}` / `{redacted: true}` / Presidio-redacted messages — no PII.
 - With the switch off (default): zero traces, worker boots normally.
 
 ## Gates (must stay green)

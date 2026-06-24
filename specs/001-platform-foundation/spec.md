@@ -10,7 +10,7 @@
 
 ## Overview
 
-This feature establishes the operational and security spine that every later Pantera
+This feature establishes the operational and security spine that every later Vespera
 feature depends on: a one-command local stack, a managed-secret bootstrap, fail-fast
 startup validation, shared singleton resources, a liveness probe, baseline persistence
 with multi-tenant-ready indexing, structured observability, and an in-process domain-event

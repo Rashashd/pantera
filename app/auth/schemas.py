@@ -22,7 +22,7 @@ class ClientScope(StrEnum):
 
 
 class Role(StrEnum):
-    """Authorization role in Pantera; staff roles are manager/admin/reviewer (FR-002)."""
+    """Authorization role in Vespera; staff roles are manager/admin/reviewer (FR-002)."""
 
     MANAGER = "manager"
     ADMIN = "admin"

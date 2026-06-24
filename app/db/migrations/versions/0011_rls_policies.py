@@ -1,4 +1,4 @@
-"""Row-Level Security: ENABLE+FORCE RLS + tenant_isolation policies + grants to pantera_app.
+"""Row-Level Security: ENABLE+FORCE RLS + tenant_isolation policies + grants to vespera_app.
 
 Revision ID: 0011
 Revises: 0010
@@ -6,9 +6,9 @@ Create Date: 2026-06-16
 
 Applies a role-aware tenant_isolation policy to every client_id-bearing table (clients keys on
 its own id). users/audit_log are documented exemptions. The least-privilege runtime role
-pantera_app is created at DB bootstrap (compose init / CI step), NOT here; this migration only
+vespera_app is created at DB bootstrap (compose init / CI step), NOT here; this migration only
 GRANTs table privileges to it and guards each GRANT so a missing role gives a clear error.
-Runs on the privileged role (database_url); pantera bypasses RLS so migrations/seed are unaffected.
+Runs on the privileged role (database_url); vespera bypasses RLS so migrations/seed are unaffected.
 """
 
 from collections.abc import Sequence
@@ -45,7 +45,7 @@ _POLICIED_TABLES: list[tuple[str, str]] = [
     ("user_watchlist_scope", "client_id"),
 ]
 
-_APP_ROLE = "pantera_app"
+_APP_ROLE = "vespera_app"
 
 # Staff/system (is_staff='on') see all rows; otherwise scope to the GUC client id. NULLIF makes
 # an unset GUC default-deny (no client matches), and current_setting(...,true) tolerates unset.

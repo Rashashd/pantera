@@ -33,8 +33,8 @@ from app.triage.routes import router as triage_router
 
 
 def create_app() -> FastAPI:
-    """Create and configure the Pantera FastAPI application."""
-    app = FastAPI(title="Pantera", version="0.1.0", lifespan=lifespan)
+    """Create and configure the Vespera FastAPI application."""
+    app = FastAPI(title="Vespera", version="0.1.0", lifespan=lifespan)
     app.include_router(health_router)
     app.include_router(auth_router)  # spec 2: /auth/jwt/login (rate-limited), /logout
     app.include_router(auth_me_router)  # spec 4b: PATCH /auth/users/me (self-service pw change)

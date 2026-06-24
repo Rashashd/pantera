@@ -11,7 +11,7 @@
 ## Overview
 
 Specs 1–4 produced the platform, auth/roles, client watchlists, and a per-client corpus of
-raw, unparsed documents (the ingestion pipeline). The next stages of Pantera — parsing &
+raw, unparsed documents (the ingestion pipeline). The next stages of Vespera — parsing &
 embedding the corpus (Spec 6) and triaging each finding (later specs) — both depend on a
 single lean inference service that can answer two questions about biomedical text:
 

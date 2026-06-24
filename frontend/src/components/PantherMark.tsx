@@ -1,6 +1,6 @@
 /**
- * Pantera panther mark — the brand icon inlined as SVG (path data from the
- * finalized "Pantera Login Split" handoff) so it renders crisply at any size
+ * Vespera panther mark — the brand icon inlined as SVG (path data from the
+ * finalized "Vespera Login Split" handoff) so it renders crisply at any size
  * and recolors per theme. Continuous teal line + three red signal nodes.
  *
  * - variant="brand" (default): teal line + red nodes, brighter in dark mode.
@@ -19,15 +19,15 @@ export function PantherMark({
   const mono = variant === "mono";
   const lineStroke = mono
     ? "stroke-current"
-    : "stroke-pantera-teal dark:stroke-[#2aa5a5]";
+    : "stroke-vespera-teal dark:stroke-[#2aa5a5]";
   const nodeStroke = mono
     ? "stroke-current"
-    : "stroke-pantera-alert dark:stroke-[#bf5050]";
+    : "stroke-vespera-alert dark:stroke-[#bf5050]";
   return (
     <svg
       viewBox="0 0 800 800"
       role="img"
-      aria-label="Pantera"
+      aria-label="Vespera"
       className={className}
       fill="none"
       strokeLinejoin="round"

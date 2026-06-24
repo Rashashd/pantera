@@ -22,7 +22,7 @@ async def test_handler_failure_propagates():
 
 
 @pytest.mark.skipif(
-    not os.getenv("PANTERA_INTEGRATION"),
+    not os.getenv("VESPERA_INTEGRATION"),
     reason="requires the Compose stack (Postgres) with the baseline migration applied",
 )
 async def test_audit_failure_rolls_back_state(tmp_path):

@@ -52,7 +52,7 @@ query, routing shell) that every story builds on.
 
 - [X] T008 Create migration `app/db/migrations/versions/0009_llm_usage.py` — `llm_usage` table (columns + CHECK on `call_site`, indexes `ix_llm_usage_client_id`, `ix_llm_usage_client_created`) per data-model.md
 - [X] T009 [P] Create `app/observability/__init__.py` + `LlmUsage` ORM in `app/observability/models.py` (mirror migration 0009)
-- [X] T010 [P] Add config to `app/core/config.py`: `langsmith_api_key: str = ""` (optional secret — **NOT** in `_REQUIRED_SECRETS`), `langsmith_project: str = "pantera"`, and per-1K-token input/output USD pricing keyed by pinned model id (unit+currency in comments)
+- [X] T010 [P] Add config to `app/core/config.py`: `langsmith_api_key: str = ""` (optional secret — **NOT** in `_REQUIRED_SECRETS`), `langsmith_project: str = "vespera"`, and per-1K-token input/output USD pricing keyed by pinned model id (unit+currency in comments)
 - [X] T011 [P] Implement `app/observability/pricing.py` `compute_cost(model, in_tok, out_tok, settings) -> Decimal` (unknown model → 0 + warning)
 - [X] T012 Implement `app/observability/usage.py` `record_usage(...)` best-effort writer (reuses caller session; try/except → log+swallow, never re-raises) — depends on T009, T011
 - [X] T013 [P] Implement `app/observability/tracing.py` `configure_tracing(settings)` (no-op when key empty) + lazy `traceable` fallback; call it at startup in `app/main.py`/lifespan after Vault load

@@ -102,7 +102,7 @@ Expedited drafting fires after triage produces a finding. The cleanest hook: in 
 
 - `eval_thresholds.yaml`: add `agent_tool_selection_accuracy_min: 0.85` (SC-004). Grounding + injection gates on the report golden set (SC-001/SC-010). Corroboration accuracy 0.75 already exists from spec 7 — reuse (T040b).
 - Runtime knobs (caps, redraft cap=3, SLA hours) live in `Settings`, **never** in `eval_thresholds.yaml` (spec-8 convention).
-- Eval tests are self-contained (no `PANTERA_INTEGRATION`) so the CI `eval` job runs them; wire into `.github/workflows/ci.yml` (T041).
+- Eval tests are self-contained (no `VESPERA_INTEGRATION`) so the CI `eval` job runs them; wire into `.github/workflows/ci.yml` (T041).
 
 ---
 

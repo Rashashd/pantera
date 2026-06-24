@@ -1,1 +1,1 @@
-"""Pantera backend application package (modular monolith)."""
+"""Vespera backend application package (modular monolith)."""

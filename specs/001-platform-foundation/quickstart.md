@@ -14,7 +14,7 @@ in `tasks.md` (next phase) and the source tree; this is a run/validation guide.
 1. Copy `.env.example` to `.env` — it documents only `VAULT_ADDR` and `VAULT_TOKEN`
    (no real secrets).
 2. `docker compose up -d vault postgres redis`
-3. Write secrets into Vault once (KV v2 path `pantera/secrets`): `database_url`,
+3. Write secrets into Vault once (KV v2 path `vespera/secrets`): `database_url`,
    `redis_url`, and at least one of `anthropic_api_key` / `openai_api_key`. (A helper
    script is provided by the implementation phase.)
 

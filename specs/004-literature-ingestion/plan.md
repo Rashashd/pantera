@@ -40,7 +40,7 @@ columns on `watchlist_items` (`mesh_validity`, `mesh_canonical`). One new migrat
 
 **Testing**: `uv run pytest` (unit + integration). Adapters are tested against **recorded
 fixtures** (no live network in CI); service/integration tests inject fake adapters or stub the
-HTTP layer. Integration tests need `PANTERA_INTEGRATION=1` + the live stack
+HTTP layer. Integration tests need `VESPERA_INTEGRATION=1` + the live stack
 (see [dev-environment](../../memory/dev-environment.md)).
 
 **Target Platform**: Linux container (the `api` service in the existing docker-compose modular

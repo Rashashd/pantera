@@ -26,7 +26,7 @@ The controls added by later specs and the security-audit remediation, in force t
 
 - **Multi-tenant isolation (defense in depth).** Every row is `client_id`-scoped at the repository
   AND RAG-retrieval layers, backed by Postgres **row-level security** (migration `0011`): the
-  runtime connects as the least-privilege `pantera_app` role with per-transaction tenant context;
+  runtime connects as the least-privilege `vespera_app` role with per-transaction tenant context;
   an unset context is **default-deny** (breaks loud, never leaks).
 - **Guardrails.** Every external-LLM call (triage, drafting agent) and document intake passes the
   torch-free guardrails sidecar (injection / jailbreak / topic-scope / cross-client rails). An

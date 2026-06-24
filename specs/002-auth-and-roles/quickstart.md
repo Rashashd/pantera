@@ -83,7 +83,7 @@ After running Scenarios 1–4, query `audit_log`:
 uv run pytest tests/unit -q
 
 # Full auth integration suite (needs the live stack)
-$env:PANTERA_INTEGRATION=1; uv run pytest tests/integration/test_auth_login.py \
+$env:VESPERA_INTEGRATION=1; uv run pytest tests/integration/test_auth_login.py \
   tests/integration/test_authz.py tests/integration/test_users_admin.py \
   tests/integration/test_login_rate_limit.py tests/integration/test_auth_audit.py -q
 

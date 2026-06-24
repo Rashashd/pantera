@@ -15,7 +15,7 @@ export function AuditExportButton({ clientId }: { clientId?: number | null }) {
   async function handleExport() {
     setBusy(true);
     try {
-      const token = localStorage.getItem("pantera_token");
+      const token = localStorage.getItem("vespera_token");
       const qs = clientId != null ? `&client_id=${clientId}` : "";
       const resp = await fetch(`${BASE_URL}/audit/export?format=csv${qs}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},

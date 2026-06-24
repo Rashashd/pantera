@@ -15,7 +15,7 @@ Additive columns supporting the triage fail-safe cluster (Constitution III):
   triage-failed document, so a degraded run is distinguishable from a clean completion.
 
 Purely additive (new nullable columns on existing tables): no RLS or grant changes are needed —
-the table-level privileges granted to pantera_app in 0011/0012 already cover new columns.
+the table-level privileges granted to vespera_app in 0011/0012 already cover new columns.
 """
 
 from collections.abc import Sequence

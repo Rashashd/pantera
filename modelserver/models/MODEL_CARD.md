@@ -1,4 +1,4 @@
-# Model Card — Pantera Modelserver v1.0
+# Model Card — Vespera Modelserver v1.0
 
 ## Task
 

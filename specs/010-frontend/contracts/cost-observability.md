@@ -68,7 +68,7 @@ def configure_tracing(settings) -> None:
 
 - `langsmith_api_key: str = ""` — secret, optional, from Vault, **NOT** in `_REQUIRED_SECRETS`
   (so no ci.yml inline-secret change; CI/fresh-clone stay green without it).
-- `langsmith_project: str = "pantera"`.
+- `langsmith_project: str = "vespera"`.
 - per-1K-token input/output USD prices keyed by pinned model id (unit + currency in the field
   name/comment).
 

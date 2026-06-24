@@ -19,8 +19,8 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const TOKEN_KEY = "pantera_token";
-const USER_KEY = "pantera_user";
+const TOKEN_KEY = "vespera_token";
+const USER_KEY = "vespera_user";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>(() => {

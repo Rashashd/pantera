@@ -67,7 +67,7 @@ honored the initial-lookback window (`ingestion_initial_lookback_days`, default 
 uv run pytest tests/unit -q
 
 # integration (needs the live stack; adapters use fakes/recorded fixtures — no live network)
-$env:PANTERA_INTEGRATION=1; uv run pytest tests/integration -q
+$env:VESPERA_INTEGRATION=1; uv run pytest tests/integration -q
 
 # lint/format — BOTH must pass before commit
 uv run ruff check app worker tests scripts

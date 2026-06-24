@@ -28,7 +28,7 @@ export function DownloadReportButton({ clientId, reportId, status }: Props) {
   async function handleDownload() {
     setBusy(true);
     try {
-      const token = localStorage.getItem("pantera_token");
+      const token = localStorage.getItem("vespera_token");
       const resp = await fetch(
         `${BASE_URL}/clients/${clientId}/reports/${reportId}/download`,
         { headers: token ? { Authorization: `Bearer ${token}` } : {} },

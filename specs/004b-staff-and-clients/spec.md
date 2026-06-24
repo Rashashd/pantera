@@ -6,18 +6,18 @@
 
 **Status**: Draft
 
-**Input**: User description: "Convert Pantera from a per-client multi-tenant SaaS into an internal agency/CRO model. Pantera is a research company doing pharmacovigilance literature work FOR pharma clients. Internal staff (manager/admin/reviewer) work ACROSS all clients; each client may also have its own client-side users (added later) scoped by severity and watchlist. A manager creates and soft-deletes clients. Admins set per-client report recipient emails. Backend/API only."
+**Input**: User description: "Convert Vespera from a per-client multi-tenant SaaS into an internal agency/CRO model. Vespera is a research company doing pharmacovigilance literature work FOR pharma clients. Internal staff (manager/admin/reviewer) work ACROSS all clients; each client may also have its own client-side users (added later) scoped by severity and watchlist. A manager creates and soft-deletes clients. Admins set per-client report recipient emails. Backend/API only."
 
 ## Why This Spec Exists (Context)
 
-Specs 1–4 modeled Pantera as a classic multi-tenant SaaS: every user belongs to exactly one
+Specs 1–4 modeled Vespera as a classic multi-tenant SaaS: every user belongs to exactly one
 client (`users.client_id` is required), there are two roles (`admin`, `reviewer`), and every
 authorization check is `resource.client_id == user.client_id` — a hard wall that makes a user of
 one client unable to see any other client. That correctly describes a product where each customer
 company logs in to its own account.
 
-But Pantera's real shape is an **agency / CRO**: a research company performs pharmacovigilance
-literature monitoring *on behalf of* many pharma clients. Pantera's **own internal staff** must
+But Vespera's real shape is an **agency / CRO**: a research company performs pharmacovigilance
+literature monitoring *on behalf of* many pharma clients. Vespera's **own internal staff** must
 work **across all clients**, while each client's **own people** (added later) see only their
 client's work — and only the slice of it they are entitled to. This spec revises the user and
 authorization foundation to match that reality **before** later specs (report drafting, reviewer
@@ -46,7 +46,7 @@ This is a **backend/API-only** spec. No frontend, no report drafting, no notific
 
 ### User Story 1 - Internal staff operate across all clients (Priority: P1)
 
-Pantera's internal staff sign in once and operate across **every** client. There are three staff
+Vespera's internal staff sign in once and operate across **every** client. There are three staff
 roles: **manager** (the superuser who owns the client roster and all staff accounts), **admin**
 (operates client workspaces, manages client-side users, configures report delivery), and
 **reviewer** (will approve/reject/edit agent-written reports — the permission is granted here even
@@ -91,7 +91,7 @@ A **manager** creates new clients (replacing the hand-run operator seed script),
 **soft-delete** a client to retire it and **reactivate** it later. Soft-deleting a client freezes
 it — no new ingestion runs are accepted and its client-side users can no longer sign in — while
 **preserving all of its data** (documents, watchlists, runs, watermarks, audit). A client is never
-hard-deleted. This gives Pantera a first-class, audited client lifecycle owned by a single
+hard-deleted. This gives Vespera a first-class, audited client lifecycle owned by a single
 accountable role.
 
 **Why this priority**: Clients are the unit of work the whole platform organizes around. A logged-in
@@ -461,7 +461,7 @@ and the target client.
   level. Admin Console / client portal UIs and any report-viewing screens are a later frontend slice.
 - **Constitution V is reframed, not weakened**: Principle V's guarantee — one client's data must never
   appear in another **client's** report or retrieval context — still holds in full for **client-side
-  users**, who remain strictly isolated to their own client and scope. Internal **staff** are Pantera
+  users**, who remain strictly isolated to their own client and scope. Internal **staff** are Vespera
   *operators*, not a competing tenant; their deliberate, audited cross-client access is an operator
   capability, not tenant leakage. The plan's Constitution Check must ratify this interpretation
   explicitly (and, if required, record a governance note/amendment); this spec assumes that

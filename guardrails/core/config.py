@@ -10,7 +10,7 @@ class GuardrailsConfig(BaseSettings):
 
     vault_addr: str = "http://vault:8200"
     vault_token: str = "root"
-    vault_secret_path: str = "pantera/secrets"
+    vault_secret_path: str = "vespera/secrets"
 
     log_level: str = "INFO"
 

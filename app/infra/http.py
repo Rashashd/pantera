@@ -8,7 +8,7 @@ from collections.abc import Awaitable, Callable
 import httpx
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
-_USER_AGENT = "Pantera/0.1 (pharmacovigilance monitor)"
+_USER_AGENT = "Vespera/0.1 (pharmacovigilance monitor)"
 _CONNECT_TIMEOUT = 10.0
 _READ_TIMEOUT = 30.0
 

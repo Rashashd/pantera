@@ -1,4 +1,4 @@
-title = "Pantera gitleaks config"
+title = "Vespera gitleaks config"
 
 [allowlist]
   description = "Commits containing only false positives: SHA-256 model checksums and ML terminology"

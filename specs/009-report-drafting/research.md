@@ -73,7 +73,7 @@ Decisions resolving the unknowns in the Technical Context. Each: **Decision / Ra
 
 ## D7 — Eval gates & golden sets (eval_thresholds.yaml)
 
-**Decision.** Add to `eval_thresholds.yaml`: `agent_tool_selection_accuracy_min: 0.85` (SC-004, ≥15-example `tests/data/agent_tool_selection_golden.jsonl`), report grounding gate (SC-001, every drafted claim resolvable on `tests/data/report_grounding_golden.jsonl`), and the planted-injection red-team case (SC-010). Corroboration accuracy ≥0.75 already exists from spec 7; reuse/extend for report-level corroboration (SC-003). Runtime knobs (agent caps, redraft cap = 3, SLA window) live in `Settings`, **not** the eval file (per the spec-8 convention). CI `eval` job runs these self-contained (no `PANTERA_INTEGRATION`).
+**Decision.** Add to `eval_thresholds.yaml`: `agent_tool_selection_accuracy_min: 0.85` (SC-004, ≥15-example `tests/data/agent_tool_selection_golden.jsonl`), report grounding gate (SC-001, every drafted claim resolvable on `tests/data/report_grounding_golden.jsonl`), and the planted-injection red-team case (SC-010). Corroboration accuracy ≥0.75 already exists from spec 7; reuse/extend for report-level corroboration (SC-003). Runtime knobs (agent caps, redraft cap = 3, SLA window) live in `Settings`, **not** the eval file (per the spec-8 convention). CI `eval` job runs these self-contained (no `VESPERA_INTEGRATION`).
 
 **Rationale.** Constitution IV — every agent/grounding decision backed by a committed number that blocks regressions. Mirrors the spec-8 eval-gate wiring and threshold-placement convention.
 

@@ -6,7 +6,7 @@
 
 ## Summary
 
-Build the **query** half of Pantera's RAG pipeline on top of Spec 6's chunk index. Given a
+Build the **query** half of Vespera's RAG pipeline on top of Spec 6's chunk index. Given a
 natural-language query for one client, the system: (1) **embeds the query** via the existing medical
 ONNX embedder (`ModelserverClient.embed`), serving repeats from a **Redis query-embedding cache** and
 **refusing** the query if the live embedder version ≠ the client's stored `chunks.embedder_version`
@@ -59,7 +59,7 @@ entries (TTL-bounded, best-effort). The reranker artifact is committed to `model
 **Testing**: `uv run pytest`. **Unit**: RRF fusion (rank math, deterministic tie-break); query
 normalization + cache key; corroboration grouping (N distinct docs, multi-passage single-source count,
 no truncation); version-mismatch refusal logic; result projection/anchor shape. **Integration** (live
-stack, `PANTERA_INTEGRATION=1`, Postgres+pgvector + modelserver): dense-only vs lexical-only vs fused
+stack, `VESPERA_INTEGRATION=1`, Postgres+pgvector + modelserver): dense-only vs lexical-only vs fused
 recall; lexical-only-match and semantic-only-match both surface in fused; rerank reorders top-K;
 client isolation (zero foreign chunks); empty-corpus → empty result + corroboration 0; cache hit (no
 2nd embed) + cache-down fallback; version-mismatch → refused; auth (suspended client refused;

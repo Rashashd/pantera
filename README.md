@@ -165,7 +165,7 @@ Then open the SPA at <http://localhost:5173>. Log in via `POST /auth/jwt/login` 
 
 ```bash
 uv run pytest                          # unit + stack-free tests
-PANTERA_INTEGRATION=1 uv run pytest    # also runs tests needing the live stack
+VESPERA_INTEGRATION=1 uv run pytest    # also runs tests needing the live stack
 uv run ruff check . && uv run black --check app worker tests   # lint (both must pass)
 ```
 
@@ -188,7 +188,7 @@ The frontend has its own Vitest + Playwright suites (see [`frontend/README.md`](
 - **Human-in-the-loop is non-negotiable** — nothing is delivered without logged reviewer approval.
 - **Grounding is the grade** — every report claim cites a source passage; ungrounded claims are refused.
 - **Multi-tenant isolation** — every row is `client_id`-scoped, enforced at both the repository and
-  RAG-retrieval layers and backed by Postgres **row-level security** (least-privilege `pantera_app` role).
+  RAG-retrieval layers and backed by Postgres **row-level security** (least-privilege `vespera_app` role).
 - **Secrets only in Vault** — fetched at startup via `hvac`; gitleaks runs pre-commit and in CI.
 - **Egress redaction** — Presidio redacts PII/secrets before any external-LLM call, log, or trace.
 - **Guardrails** — every LLM-facing call passes injection / jailbreak / topic-scope / cross-client rails.

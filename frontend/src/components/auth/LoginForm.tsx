@@ -1,7 +1,7 @@
 /**
  * Sign-in form: email + password with reveal toggle, "remember me", a
  * non-self-serve "forgot password" hint, non-enumerating errors, and
- * post-login role-based redirect. Styled to the finalized "Pantera Login
+ * post-login role-based redirect. Styled to the finalized "Vespera Login
  * Split" handoff; layout-agnostic so the page owns heading/tagline/chrome.
  */
 import { useState } from "react";

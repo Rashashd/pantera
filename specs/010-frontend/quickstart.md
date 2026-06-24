@@ -92,7 +92,7 @@ docker compose up -d vault postgres redis
 # 2. Write Vault secrets pointing at the OVERRIDE ports. write_secrets.py demands an LLM key even
 #    though login needs none — pass a dummy.
 export VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=root \
-  DATABASE_URL="postgresql+asyncpg://pantera:pantera@localhost:5433/pantera" \
+  DATABASE_URL="postgresql+asyncpg://vespera:vespera@localhost:5433/vespera" \
   REDIS_URL="redis://localhost:6380/0" ANTHROPIC_API_KEY="sk-dummy"
 uv run python scripts/write_secrets.py
 

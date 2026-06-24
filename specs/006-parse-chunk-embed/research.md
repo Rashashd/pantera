@@ -16,7 +16,7 @@ clearest choice for Spec 7.
 count and to (re)build after the table is populated — important here because a client's index starts
 empty and grows incrementally per FR-009, exactly the regime where IVFFlat recall is poor until
 trained. pgvector ≥0.5 (present in `pgvector/pgvector:pg16`) supports HNSW; 768 dims is well within
-HNSW's 2000-dim limit. Build/insert cost is acceptable at Pantera's moderate per-client scale.
+HNSW's 2000-dim limit. Build/insert cost is acceptable at Vespera's moderate per-client scale.
 
 **Alternatives considered**: *IVFFlat* — lower memory, but needs `lists` tuning and a populated table
 to train, and degrades on an incrementally-built index. *No ANN index (exact scan)* — fine at tiny

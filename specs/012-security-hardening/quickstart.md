@@ -10,19 +10,19 @@ docker compose up -d                      # api, worker, postgres, redis, vault,
 uv run python scripts/write_secrets.py    # writes app_database_url + guardrails_token
 # Apply migration 0011 (privileged role) from the host:
 $env:VAULT_ADDR="http://localhost:8200"; $env:VAULT_TOKEN="root"
-$env:PANTERA_DATABASE_URL="postgresql+asyncpg://pantera:pantera@localhost:5433/pantera"
-uv run alembic upgrade head               # creates RLS policies + grants to pantera_app
+$env:VESPERA_DATABASE_URL="postgresql+asyncpg://vespera:vespera@localhost:5433/vespera"
+uv run alembic upgrade head               # creates RLS policies + grants to vespera_app
 ```
 
 ## Scenario 1 — RLS tenant isolation (User Story 3)
 
 Goal: an intentionally-unfiltered query returns only the in-context client's rows; default-deny when unset.
 
-1. Connect as `pantera_app` (least-priv). With NO context set, `SELECT count(*) FROM findings;` ⇒ **0** (default-deny).
+1. Connect as `vespera_app` (least-priv). With NO context set, `SELECT count(*) FROM findings;` ⇒ **0** (default-deny).
 2. `SELECT set_config('app.current_client_id','1',true); SELECT count(*) FROM findings;` ⇒ only client 1's rows.
 3. `SELECT set_config('app.is_staff','on',true); SELECT count(*) FROM findings;` ⇒ all rows (staff/system).
 4. Attempt `INSERT INTO findings(client_id, …) VALUES (2, …)` while context is client 1 ⇒ **rejected** by `WITH CHECK`.
-5. As `pantera` (privileged): migrations/seed succeed (bypass). 
+5. As `vespera` (privileged): migrations/seed succeed (bypass). 
 Expected: integration test `tests/integration/test_rls_isolation.py` green; SC-005/006/009.
 
 ## Scenario 2 — Redaction at egress (User Story 2)
@@ -65,6 +65,6 @@ Expected: SC-008.
 uv run ruff check app worker guardrails tests
 uv run black --check app worker guardrails tests
 uv run pytest tests/unit
-$env:PANTERA_INTEGRATION="1"; uv run pytest tests/integration   # live DB (RLS) required
+$env:VESPERA_INTEGRATION="1"; uv run pytest tests/integration   # live DB (RLS) required
 ```
 Coverage gate ≥80% overall; auth/HITL/DB-write paths ≥95%. Both new eval gates must pass.

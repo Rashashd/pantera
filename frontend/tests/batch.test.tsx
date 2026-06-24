@@ -38,9 +38,9 @@ const FINDINGS = [
 ];
 
 function TestWrapper({ children }: { children: React.ReactNode }) {
-  localStorage.setItem("pantera_token", "token");
-  localStorage.setItem("pantera_user", JSON.stringify(REVIEWER_USER));
-  localStorage.setItem("pantera_acting_client", "1");
+  localStorage.setItem("vespera_token", "token");
+  localStorage.setItem("vespera_user", JSON.stringify(REVIEWER_USER));
+  localStorage.setItem("vespera_acting_client", "1");
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return (
     <ThemeProvider>

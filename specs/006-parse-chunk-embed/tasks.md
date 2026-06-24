@@ -271,4 +271,4 @@ Task: "Implement parsers/regulatory_feed.py"
 - Embedding is delegated to `app/infra/modelserver_client.py` (`embed_chunked`); never re-implement it.
 - Verify tests fail before implementing; commit after each task or logical group (Conventional Commits, no Co-Authored-By).
 - No `eval_thresholds.yaml` change here — the RAG golden-set gate is Spec 7.
-- Integration tests need `PANTERA_INTEGRATION=1` + `docker compose up` (+ the gitignored override on this host).
+- Integration tests need `VESPERA_INTEGRATION=1` + `docker compose up` (+ the gitignored override on this host).

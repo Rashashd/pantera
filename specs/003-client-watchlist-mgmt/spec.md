@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "client-watchlist-mgmt — clients, watchlists (drugs/keywords/MeSH), monitoring cadence, severity thresholds, custom keywords, cost budget (spec 3 of the Pantera 13-spec build order)"
+**Input**: User description: "client-watchlist-mgmt — clients, watchlists (drugs/keywords/MeSH), monitoring cadence, severity thresholds, custom keywords, cost budget (spec 3 of the Vespera 13-spec build order)"
 
 ## Clarifications
 
@@ -29,7 +29,7 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
-Pantera monitors medical literature for adverse drug events on behalf of its business customers (clients). Spec 1 established the `client_id` tenant boundary as a bare value; spec 2 added authenticated users scoped to a client. This feature gives a client its **first-class identity** and the **configuration that drives all later monitoring**: which drugs and topics to watch (including the search keywords used to find reports), how often to check, the severity level at which a signal warrants escalation, and how much they are willing to spend. Nothing in this spec ingests literature or produces reports — it defines *what each client wants monitored and under what limits*, so that specs 4–13 (ingestion, triage, drafting, scheduling) have a configuration to act on. This spec is **backend/API only**; the React Admin Console that surfaces this configuration is a later slice.
+Vespera monitors medical literature for adverse drug events on behalf of its business customers (clients). Spec 1 established the `client_id` tenant boundary as a bare value; spec 2 added authenticated users scoped to a client. This feature gives a client its **first-class identity** and the **configuration that drives all later monitoring**: which drugs and topics to watch (including the search keywords used to find reports), how often to check, the severity level at which a signal warrants escalation, and how much they are willing to spend. Nothing in this spec ingests literature or produces reports — it defines *what each client wants monitored and under what limits*, so that specs 4–13 (ingestion, triage, drafting, scheduling) have a configuration to act on. This spec is **backend/API only**; the React Admin Console that surfaces this configuration is a later slice.
 
 ### User Story 1 - Establish a client (tenant) record (Priority: P1)
 
@@ -157,7 +157,7 @@ An admin sets a monitoring **cost budget** for each watchlist. The platform trac
 
 ### Key Entities *(include if feature involves data)*
 
-- **Client (Tenant)**: The organization Pantera monitors on behalf of. Key attributes: system-generated stable identifier (durable key referenced by users, watchlists, audit rows), platform-unique human-readable name, active/suspended status. Owns one or more watchlists; every user (spec 2) belongs to exactly one client. The first-class backing for the `client_id` boundary introduced in spec 1.
+- **Client (Tenant)**: The organization Vespera monitors on behalf of. Key attributes: system-generated stable identifier (durable key referenced by users, watchlists, audit rows), platform-unique human-readable name, active/suspended status. Owns one or more watchlists; every user (spec 2) belongs to exactly one client. The first-class backing for the `client_id` boundary introduced in spec 1.
 - **Watchlist**: A named monitoring group for a client — the set of subjects to watch, plus its own cadence, severity configuration, and cost budget. Composed of **Drugs**, **MeSH terms**, and **Keywords**. A client may have many watchlists (1:many); each watchlist's name is unique within its client. Belongs to exactly one client; is the primary input to the ingestion spec (spec 4).
 - **Drug / Active Substance**: A product or active substance the client wants monitored for adverse events; a member of a specific watchlist.
 - **MeSH Term**: A medical subject heading associated with a watchlist for precise literature targeting. Stored as free-form text in this spec; resolution/validation against the MeSH controlled vocabulary occurs in the ingestion spec (spec 4).

@@ -1,7 +1,7 @@
 """Triage golden-set eval gate: recall>=0.90, precision>=0.75, FN<=FP (SC-003).
 
 Reads eval/triage/golden_set.jsonl and eval_thresholds.yaml.
-Self-contained — mocks modelserver and LLM; no database or PANTERA_INTEGRATION required.
+Self-contained — mocks modelserver and LLM; no database or VESPERA_INTEGRATION required.
 """
 
 from __future__ import annotations

@@ -8,7 +8,7 @@
 
 ## Summary
 
-Harden the existing Pantera pipeline along three independent security layers plus close two recorded triage deviations and re-enable tracing:
+Harden the existing Vespera pipeline along three independent security layers plus close two recorded triage deviations and re-enable tracing:
 
 1. **Guardrails sidecar** — a lean, torch-free, no-LLM HTTP service exposing `POST /guard` (platform rails: prompt-injection, jailbreak, topic-scope, cross-client). The app wraps every external-LLM egress (triage `_call_llm`, agent `chat_model.ainvoke`) and the document-intake path; both **input and output** are checked. Service auth = `X-Service-Token` (`guardrails_token`). Fail-safe: triage escalates, agent escalates, intake quarantines.
 2. **Presidio redaction** — an in-process redaction pass applied at every egress point (external LLM call, log line, trace, derived summary), uniformly across all text sources (document/finding/report/config). PII = patient identifiers; secrets = key/token patterns. Persisted report body/findings/chunks are NOT redacted. Runs **before** guardrails and the external call.
@@ -25,7 +25,7 @@ Harden the existing Pantera pipeline along three independent security layers plu
 
 **Storage**: PostgreSQL 16 + pgvector (RLS policies added; no new business tables). Redis (unchanged).
 
-**Testing**: pytest (unit + integration, `PANTERA_INTEGRATION=1` on a live DB); two new eval gates run in the CI `eval` job. RLS isolation tests need a real Postgres (not SQLite).
+**Testing**: pytest (unit + integration, `VESPERA_INTEGRATION=1` on a live DB); two new eval gates run in the CI `eval` job. RLS isolation tests need a real Postgres (not SQLite).
 
 **Target Platform**: Linux server containers (api, worker, modelserver, **guardrails (new)**, frontend) + managed Postgres/Redis/Vault.
 

@@ -21,8 +21,8 @@ const CLIENT_USER = {
 };
 
 function TestWrapper({ children, initialEntries = ["/portal"] }: { children: React.ReactNode; initialEntries?: string[] }) {
-  localStorage.setItem("pantera_token", "token");
-  localStorage.setItem("pantera_user", JSON.stringify(CLIENT_USER));
+  localStorage.setItem("vespera_token", "token");
+  localStorage.setItem("vespera_user", JSON.stringify(CLIENT_USER));
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return (
     <ThemeProvider>

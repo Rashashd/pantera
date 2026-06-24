@@ -1,7 +1,7 @@
 """End-to-end triage fail-safe tests (Constitution III): a classifier/NER outage must escalate or
 mark the run degraded — never silently suppress, and never let a broken run complete clean.
 
-Live stack only (skipped without PANTERA_INTEGRATION). These assert the SAFE outcomes the unit
+Live stack only (skipped without VESPERA_INTEGRATION). These assert the SAFE outcomes the unit
 tests assert in isolation, but against the real database + audit log + sweep queries.
 """
 
@@ -12,7 +12,7 @@ import pytest
 import pytest_asyncio
 
 pytestmark = pytest.mark.skipif(
-    not os.getenv("PANTERA_INTEGRATION"), reason="integration tests require PANTERA_INTEGRATION=1"
+    not os.getenv("VESPERA_INTEGRATION"), reason="integration tests require VESPERA_INTEGRATION=1"
 )
 
 

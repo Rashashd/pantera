@@ -131,7 +131,7 @@ def create_app() -> FastAPI:
 
     config = get_config()
     app = FastAPI(
-        title="Pantera Modelserver",
+        title="Vespera Modelserver",
         version="0.1.0",
         lifespan=_lifespan,
     )

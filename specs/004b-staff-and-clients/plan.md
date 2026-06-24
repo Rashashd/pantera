@@ -6,7 +6,7 @@
 
 ## Summary
 
-Convert Pantera's identity/authorization layer from per-client multi-tenant SaaS (spec 1–2) into an
+Convert Vespera's identity/authorization layer from per-client multi-tenant SaaS (spec 1–2) into an
 internal **agency/CRO** model. Add a `user_type` (`staff` | `client`) distinct from `role`; staff
 (`manager`/`admin`/`reviewer`) act **across all clients** with no home `client_id`, while client-side
 users stay bound to one client and are visibility-scoped by severity floor and/or watchlist set
@@ -34,7 +34,7 @@ CHECK. `clients`: add `report_email_regular`, `report_email_urgent`, `urgent_sev
 (lifecycle reuses existing `status`). New table `user_watchlist_scope`. One migration `0005`
 (down_revision `0004`) with a data reset + idempotent bootstrap-manager seed.
 
-**Testing**: `uv run pytest` (unit + integration). Integration needs `PANTERA_INTEGRATION=1` + the
+**Testing**: `uv run pytest` (unit + integration). Integration needs `VESPERA_INTEGRATION=1` + the
 live stack. Auth/account-write paths targeted at ≥95% line coverage; overall ≥80% (CI gate).
 
 **Target Platform**: Linux container (the `api` service in the existing docker-compose monolith).
@@ -69,7 +69,7 @@ body.
 **Principle V reframing (the one deliberate reinterpretation).** Principle V guarantees one client's
 data never appears in **another client's** report/retrieval context. That guarantee is upheld in full
 for **client-side users**, who remain strictly isolated to their own client and scope (FR-022, FR-007,
-SC-009). Internal **staff** are Pantera *operators*, not a competing tenant; their cross-client reach
+SC-009). Internal **staff** are Vespera *operators*, not a competing tenant; their cross-client reach
 is a deliberate, **audited** operator capability, not tenant leakage. Compensating controls replace the
 removed per-row wall: (a) every staff action names a validated **target client** recorded in the audit
 trail; (b) authorization is re-read from current DB state each request; (c) the audit log is

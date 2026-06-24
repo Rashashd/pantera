@@ -179,7 +179,7 @@ See `contracts/modelserver-rerank.md` — **pair-encode with `token_type_ids`** 
 - The integration **test job** runs `uv sync --group modelserver`, then `docker compose up -d --wait
   vault postgres redis` (⚠️ **no modelserver container**), writes secrets into Vault (incl.
   `modelserver_token = "ci-test-token"`), `alembic upgrade head`, then `pytest` with
-  `PANTERA_INTEGRATION=1` and the 80% coverage gate. DB/Redis URLs come from **Vault**, not env.
+  `VESPERA_INTEGRATION=1` and the 80% coverage gate. DB/Redis URLs come from **Vault**, not env.
 - The lean **`eval` job** runs only `modelserver/eval/run_eval.py` (classifier) — leave it unchanged.
 - Therefore the RAG eval + rerank integration tests **boot the modelserver ASGI app in-process** via the
   `transport` seam (§ `contracts/reranker-client.md`), `MODEL_DIR=modelserver/models`, set the service

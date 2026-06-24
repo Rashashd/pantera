@@ -6,7 +6,7 @@
 
 ## Summary
 
-Stand up Pantera's first **separate inference container** and first **evaluation gate**. The
+Stand up Vespera's first **separate inference container** and first **evaluation gate**. The
 modelserver is a lean, stateless FastAPI service that exposes exactly two inference capabilities
 over authenticated service-to-service HTTP/JSON: (1) **adverse-event classification** — returns a
 raw confidence in `[0,1]` plus a YES/NO at a documented default cutoff of `0.5`, decision policy

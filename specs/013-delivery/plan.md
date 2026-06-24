@@ -20,7 +20,7 @@ Technical approach: a new `app/delivery/` package (rendering + n8n client + deli
 
 **Storage**: PostgreSQL + pgvector. New: `delivery_attempt` table; new columns on `reports` and `clients`. Migration head is **0011** → author **0012** (`down_revision="0011"`).
 
-**Testing**: pytest (unit + integration; `PANTERA_INTEGRATION=1` for live DB/Redis). Frontend: component/integration (mocked API) + the existing e2e smoke. n8n is **mocked in CI** (the outbound httpx call is patched; the callback endpoint is tested directly).
+**Testing**: pytest (unit + integration; `VESPERA_INTEGRATION=1` for live DB/Redis). Frontend: component/integration (mocked API) + the existing e2e smoke. n8n is **mocked in CI** (the outbound httpx call is patched; the callback endpoint is tested directly).
 
 **Target Platform**: Linux containers (api, worker, modelserver, guardrails, frontend) via docker compose; deploy Render/Fly/Railway + managed Postgres/Redis.
 

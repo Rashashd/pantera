@@ -1,1 +1,1 @@
-"""Pantera test suite."""
+"""Vespera test suite."""

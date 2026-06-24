@@ -1,4 +1,4 @@
-# Pantera SPA — Design System & Screen Specs (Spec 010)
+# Vespera SPA — Design System & Screen Specs (Spec 010)
 
 The concrete visual + interaction spec for the frontend. Built on shadcn/ui + Tailwind. This is the
 source of truth for look-and-feel; `frontend-architecture.md` owns structure/routing, this owns design.
@@ -198,7 +198,7 @@ Base body is 14px (dense, power-user appropriate). Numbers in tables/dashboards 
 ## 7. Screen specs
 
 ### 7.1 Sign-in (`/login`)
-Centered card (max 380px) on a calm split or plain `--background`. Brand mark + "Sign in to Pantera".
+Centered card (max 380px) on a calm split or plain `--background`. Brand mark + "Sign in to Vespera".
 Email, password, Sign-in button (loading state). Error (non-enumerating): "Email or password is
 incorrect." Rate-limited: "Too many attempts — try again in a moment." No "forgot password" in v1
 (out of scope). Footer: small product/version.

@@ -122,7 +122,7 @@ Each new file: one-sentence module docstring, ≤ ~300 lines, fully `async`, Pyd
 # secret (optional; empty disables tracing) — from Vault, NOT in _REQUIRED_SECRETS
 langsmith_api_key: str = ""
 # non-secret tracing/pricing config
-langsmith_project: str = "pantera"
+langsmith_project: str = "vespera"
 # per-1K-token prices in USD, keyed by pinned model id (state unit+currency here)
 llm_price_per_1k_input_usd: dict[str, float] = {...}   # e.g. {anthropic_model: 0.003, openai_model: 0.0025}
 llm_price_per_1k_output_usd: dict[str, float] = {...}

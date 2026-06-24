@@ -30,7 +30,7 @@ container (scispaCy runs in the app/worker pipeline, not the modelserver).
 **Storage**: PostgreSQL + pgvector. New `findings` table (migration 0007); additive
 `clients.custom_severity_keywords` JSONB column.
 
-**Testing**: pytest (`uv run pytest`); integration tests need `PANTERA_INTEGRATION=1` + docker compose.
+**Testing**: pytest (`uv run pytest`); integration tests need `VESPERA_INTEGRATION=1` + docker compose.
 New triage golden-set eval runner extends the existing CI `eval` job pattern
 (`modelserver/eval/run_eval.py` → add a triage gate reading `eval_thresholds.yaml`).
 

@@ -89,7 +89,7 @@ def render_report_document(report: Any, findings: Any = ()) -> str:
     parts: list[str] = [
         "<!DOCTYPE html>",
         '<html lang="en"><head><meta charset="utf-8">',
-        f"<title>Pantera report {report_id}</title>",
+        f"<title>Vespera report {report_id}</title>",
         _STYLE,
         "</head><body>",
         f"<h1>Pharmacovigilance Report #{report_id}</h1>",

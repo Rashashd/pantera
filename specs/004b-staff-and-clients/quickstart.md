@@ -8,7 +8,7 @@
 - Local stack up: `docker compose up -d` (+ gitignored `docker-compose.override.yml` on this host).
 - Secrets in Vault (`scripts/write_secrets.py`). Optionally set `bootstrap_manager_email` /
   `bootstrap_manager_password` in Vault; if unset, the documented dev default + force-change applies (D7).
-- `PANTERA_INTEGRATION=1` for integration tests.
+- `VESPERA_INTEGRATION=1` for integration tests.
 
 ## Apply the migration
 
@@ -49,7 +49,7 @@ the three report columns; `user_watchlist_scope` created; exactly **one** bootst
 
 ```powershell
 uv run pytest tests/unit/test_authz_matrix.py tests/unit/test_scope_rules.py
-$env:PANTERA_INTEGRATION=1; uv run pytest tests/integration -k "staff or client or lifecycle or freshness or migration_0005"
+$env:VESPERA_INTEGRATION=1; uv run pytest tests/integration -k "staff or client or lifecycle or freshness or migration_0005"
 uv run ruff check app tests; uv run black --check app worker tests   # BOTH must pass
 ```
 

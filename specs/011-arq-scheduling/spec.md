@@ -6,11 +6,11 @@
 
 **Status**: Draft
 
-**Input**: User description: "011-arq-scheduling — Durable ARQ job orchestration + cron scheduling for the Pantera pipeline. Replace in-process BackgroundTasks with a reliable, durable queue so the multi-stage pipeline survives restarts, retries transient failures, never double-processes, dead-letters poison jobs, and shuts down gracefully; add cron-driven automation so each watchlist's cadence drives an end-to-end cycle without a human pressing a button."
+**Input**: User description: "011-arq-scheduling — Durable ARQ job orchestration + cron scheduling for the Vespera pipeline. Replace in-process BackgroundTasks with a reliable, durable queue so the multi-stage pipeline survives restarts, retries transient failures, never double-processes, dead-letters poison jobs, and shuts down gracefully; add cron-driven automation so each watchlist's cadence drives an end-to-end cycle without a human pressing a button."
 
 ## Overview
 
-Today every stage of Pantera's monitoring pipeline (ingestion → index build → triage → expedited
+Today every stage of Vespera's monitoring pipeline (ingestion → index build → triage → expedited
 drafting → reviewer redraft → batch consolidation) runs as in-process background work attached to the
 web request that triggered it. If the web process restarts, is redeployed, or crashes mid-job, that
 work is lost silently with no retry, no record, and no operator visibility. Separately, each watchlist

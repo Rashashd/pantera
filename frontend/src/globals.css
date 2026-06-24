@@ -93,7 +93,7 @@
 }
 
 @layer utilities {
-  /* ── Login atmosphere (design handoff: "Pantera Login Split", exact palette) ── */
+  /* ── Login atmosphere (design handoff: "Vespera Login Split", exact palette) ── */
   /* Brand panel ground — themes with the page */
   .login-brand {
     background: linear-gradient(150deg, #e9f0f4 0%, #dce6ed 100%);

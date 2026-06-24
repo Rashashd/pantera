@@ -85,7 +85,7 @@ Verify: assertions within the integration tests above.
 ```bash
 uv run ruff check app worker tests scripts
 uv run black --check app worker tests scripts
-PANTERA_INTEGRATION=1 uv run pytest          # full suite green
+VESPERA_INTEGRATION=1 uv run pytest          # full suite green
 ```
 Config-write paths ≥ 95% coverage; overall suite ≥ 80% (CI gate). No new Vault secret was added,
 so `ci.yml`'s inline secret writer needs no change (research D12).

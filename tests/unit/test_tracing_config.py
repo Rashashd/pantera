@@ -9,7 +9,7 @@ _VARS = ("LANGCHAIN_TRACING_V2", "LANGCHAIN_API_KEY", "LANGCHAIN_PROJECT")
 
 
 def _settings(**overrides) -> Settings:
-    base = {"tracing_enabled": False, "langsmith_api_key": "", "langsmith_project": "pantera"}
+    base = {"tracing_enabled": False, "langsmith_api_key": "", "langsmith_project": "vespera"}
     base.update(overrides)
     return Settings(**base)
 

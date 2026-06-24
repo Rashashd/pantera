@@ -66,7 +66,7 @@ token, and confirm bad credentials return a generic failure (no email enumeratio
 
 ### Tests for User Story 1
 
-- [X] T014 [P] [US1] Add shared integration fixtures in `tests/integration/conftest.py`: app/ASGI client, DB session, and helpers to create + activate/deactivate users and obtain tokens (self-skips unless `PANTERA_INTEGRATION=1`)
+- [X] T014 [P] [US1] Add shared integration fixtures in `tests/integration/conftest.py`: app/ASGI client, DB session, and helpers to create + activate/deactivate users and obtain tokens (self-skips unless `VESPERA_INTEGRATION=1`)
 - [X] T015 [P] [US1] Integration test `tests/integration/test_auth_login.py`: 200 + token on valid login; 400 generic on wrong password (no enumeration, FR-002); 401 with no/expired/tampered token (FR-003); 400 for a deactivated user (FR-008)
 - [X] T016 [P] [US1] Unit test `tests/unit/test_auth_schemas.py`: `UserRead` never serializes a password/hash field; `UserCreate`/`UserUpdate` validate role and email (SC-005)
 - [X] T016b [P] [US1] Unit test `tests/unit/test_password_policy.py`: `validate_password_policy` accepts a conforming password and rejects each violation (too short, missing upper/lower/digit/symbol) with the documented error (FR-016, SC-007); stack-free, exercises the T011 helper directly

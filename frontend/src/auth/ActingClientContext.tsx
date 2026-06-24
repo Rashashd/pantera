@@ -25,7 +25,7 @@ const ActingClientContext = createContext<ActingClientContextValue>({
   setClientId: () => {},
 });
 
-const STORAGE_KEY = "pantera_acting_client";
+const STORAGE_KEY = "vespera_acting_client";
 
 export function ActingClientProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();

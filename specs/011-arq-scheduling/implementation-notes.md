@@ -247,7 +247,7 @@ route** (`POST .../cycles/{id}/abandon` → sets `resolved_at`, clears the FR-01
 ```powershell
 # Unit (no Docker)
 uv run pytest tests/unit -v
-# Integration (compose up + PANTERA_INTEGRATION=1 + localhost:5433/6380 per dev-environment.md)
+# Integration (compose up + VESPERA_INTEGRATION=1 + localhost:5433/6380 per dev-environment.md)
 uv run pytest tests/integration/test_scheduling_reliability.py -v
 # Worker
 uv run arq worker.worker.WorkerSettings

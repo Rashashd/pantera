@@ -1,4 +1,4 @@
-"""Shared fixtures for integration tests (live stack; skipped without PANTERA_INTEGRATION)."""
+"""Shared fixtures for integration tests (live stack; skipped without VESPERA_INTEGRATION)."""
 
 import os
 import uuid
@@ -8,7 +8,7 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
 
-_INTEGRATION = bool(os.getenv("PANTERA_INTEGRATION"))
+_INTEGRATION = bool(os.getenv("VESPERA_INTEGRATION"))
 
 
 @pytest_asyncio.fixture
@@ -20,7 +20,7 @@ async def auth_app():
 
     app = create_app()
     async with app.router.lifespan_context(app):
-        # Spec 12: the runtime engine now enforces RLS (pantera_app role). Many tests open
+        # Spec 12: the runtime engine now enforces RLS (vespera_app role). Many tests open
         # sessions directly via state.session_factory to set up data WITHOUT a request principal;
         # default those to system context so setup writes succeed. Request-path sessions still
         # override per-principal in current_active_principal, so isolation tests stay valid (the
@@ -43,7 +43,7 @@ async def client(auth_app):
 async def priv_factory(auth_app):
     """Privileged (RLS-bypassing) session factory for test data setup/teardown.
 
-    The app's own session_factory now connects as the least-privilege pantera_app role (RLS
+    The app's own session_factory now connects as the least-privilege vespera_app role (RLS
     enforced), so direct fixture INSERT/DELETE need the privileged role — mirroring how seed
     scripts run (spec 12). Request-path behaviour is still exercised through the ASGI `client`,
     which uses the RLS-enforced engine.

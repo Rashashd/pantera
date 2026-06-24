@@ -10,19 +10,19 @@ Operational guide for running Vespera locally and in production.
    (gitignored — not in a fresh clone). If present:
    `ANTHROPIC_API_KEY=... uv run python scripts/write_secrets.py`
    Otherwise write them with the Vault CLI:
-   `docker compose exec -e VAULT_TOKEN=root vault vault kv put secret/pantera/secrets \
-     database_url='postgresql+asyncpg://pantera:pantera@postgres:5432/pantera' \
+   `docker compose exec -e VAULT_TOKEN=root vault vault kv put secret/vespera/secrets \
+     database_url='postgresql+asyncpg://vespera:vespera@postgres:5432/vespera' \
      redis_url='redis://redis:6379/0' anthropic_api_key='<key>'`
 4. Apply the schema (in-container so hostnames resolve):
    `docker compose run --rm api alembic upgrade head` — the current head is **`0015`** (migrations
    `0001`–`0015`; `0013`–`0015` are the security-audit remediation: triage fail-safe markers and
-   client right-to-erasure). For RLS (migration `0011`), the least-priv `pantera_app` role must
+   client right-to-erasure). For RLS (migration `0011`), the least-priv `vespera_app` role must
    exist first — see "RLS role provisioning" below.
 5. `docker compose up -d` — then `curl http://localhost:8000/health` → `{"status":"ok"}`.
 6. **Bootstrap the first admin** (spec 2; idempotent — a no-op if any user exists):
    `docker compose run --rm api python scripts/seed_admin.py`
    It reads `bootstrap_admin_email` / `bootstrap_admin_password` from Vault (defaults
-   `admin@pantera.io` / `ChangeMe1!`; override via env before `write_secrets.py`, and change
+   `admin@vespera.io` / `ChangeMe1!`; override via env before `write_secrets.py`, and change
    the password after first login). Use a deliverable email domain — `.local` is rejected.
 
 ## Authentication (spec 2)
@@ -105,7 +105,7 @@ Two Vault secrets are **optional** (not required for boot): `pubmed_api_key` and
 `openfda_api_key`. Without them the adapters use the unauthenticated rate-limited tier.
 Add them to Vault if you hit 429 errors on those endpoints:
 ```
-vault kv patch secret/pantera/secrets pubmed_api_key='<key>' openfda_api_key='<key>'
+vault kv patch secret/vespera/secrets pubmed_api_key='<key>' openfda_api_key='<key>'
 ```
 
 ### MeSH validation
@@ -162,7 +162,7 @@ surfaces on the per-client ops dashboard (`GET /clients/{id}/metrics`).
 
 ### Dev/test inline mode
 
-Set `PANTERA_DEV_INLINE=1` and `JOBS_INLINE=true` (or set `Settings.jobs_inline=True`) to
+Set `VESPERA_DEV_INLINE=1` and `JOBS_INLINE=true` (or set `Settings.jobs_inline=True`) to
 run jobs synchronously in-process — no worker process needed. **Never do this in production.**
 
 ### Worker settings (all from Vault or env via Settings)
@@ -179,7 +179,7 @@ run jobs synchronously in-process — no worker process needed. **Never do this 
 ## Tests
 
 - `uv run pytest` — runs unit + stack-free tests.
-- `PANTERA_INTEGRATION=1 uv run pytest` — also runs tests that require the live stack.
+- `VESPERA_INTEGRATION=1 uv run pytest` — also runs tests that require the live stack.
 
 ## Index Build — RAG Substrate (spec 6)
 
@@ -192,7 +192,7 @@ Once documents are ingested, build a searchable index for hybrid retrieval (dens
 ```bash
 # Get a manager/admin token
 TOKEN=$(curl -s -X POST http://localhost:8000/auth/jwt/login \
-  -F "username=admin@pantera.io" -F "password=ChangeMe1!" | jq -r .access_token)
+  -F "username=admin@vespera.io" -F "password=ChangeMe1!" | jq -r .access_token)
 
 # Trigger the build (returns 202 Accepted, runs in the background)
 curl -X POST http://localhost:8000/clients/<client_id>/index \
@@ -249,7 +249,7 @@ After building, verify the image stays under 500 MB (D1/Principle VI):
 
 ```bash
 docker compose build modelserver
-docker images pantera-modelserver --format "{{.Size}}"
+docker images vespera-modelserver --format "{{.Size}}"
 ```
 
 If the image grows beyond 500 MB:
@@ -274,10 +274,10 @@ ONNX model replaces the current placeholder.
 
 ### Rotating the modelserver_token
 
-The service reads its token from Vault at startup (`pantera/secrets.modelserver_token`); rotation
+The service reads its token from Vault at startup (`vespera/secrets.modelserver_token`); rotation
 needs no code change:
 
-1. Write the new token to Vault (`hvac` create_or_update_secret on `pantera/secrets`).
+1. Write the new token to Vault (`hvac` create_or_update_secret on `vespera/secrets`).
 2. `docker compose restart modelserver` to pick it up.
 3. Update callers (api/worker) to the same new token in Vault and restart them. The token is
    checked per request via `hmac.compare_digest`; the new value takes effect on next restart.
@@ -333,7 +333,7 @@ docker compose restart modelserver
 curl http://localhost:8001/ready | jq .models.reranker
 
 # Image size check (must stay < 500 MB)
-docker images pantera-modelserver --format "{{.Size}}"
+docker images vespera-modelserver --format "{{.Size}}"
 ```
 
 ### RAG eval run
@@ -342,8 +342,8 @@ docker images pantera-modelserver --format "{{.Size}}"
 # Print thresholds and golden-set stats
 uv run python eval/rag/run_rag_eval.py
 
-# Run the full eval gate (requires PANTERA_INTEGRATION=1 + docker compose up)
-PANTERA_INTEGRATION=1 uv run pytest tests/integration/test_rag_eval.py -v
+# Run the full eval gate (requires VESPERA_INTEGRATION=1 + docker compose up)
+VESPERA_INTEGRATION=1 uv run pytest tests/integration/test_rag_eval.py -v
 
 # Expected output: hit_at_5 >= 0.85, mrr >= 0.70, corroboration_accuracy >= 1.0
 ```
@@ -468,17 +468,17 @@ and intake quarantines the document (`DocumentQuarantined` audited) — the cycl
 The kill-switches `guardrails_enabled`/`redaction_enabled` are TEST-ONLY; production refuses to
 boot with either `False` when `environment=production`.
 
-### RLS role provisioning (`pantera_app`)
+### RLS role provisioning (`vespera_app`)
 
-The runtime (API + worker) connects as the least-privilege `pantera_app` role (RLS-enforced);
-migrations/seed use the privileged `pantera` role. Create the role at DB bootstrap (idempotent):
+The runtime (API + worker) connects as the least-privilege `vespera_app` role (RLS-enforced);
+migrations/seed use the privileged `vespera` role. Create the role at DB bootstrap (idempotent):
 
 ```bash
-# Fresh compose volume runs scripts/db/init-pantera-app-role.sql automatically. For an existing
+# Fresh compose volume runs scripts/db/init-vespera-app-role.sql automatically. For an existing
 # volume (or CI), run it explicitly BEFORE `alembic upgrade head`:
-docker compose exec -T postgres psql -U pantera -d pantera -f - < scripts/db/init-pantera-app-role.sql
+docker compose exec -T postgres psql -U vespera -d vespera -f - < scripts/db/init-vespera-app-role.sql
 # Then write app_database_url to Vault (scripts/write_secrets.py does this) and migrate:
-uv run alembic upgrade head     # migration 0011 applies RLS + grants to pantera_app
+uv run alembic upgrade head     # migration 0011 applies RLS + grants to vespera_app
 ```
 
 Symptom of a missing RLS context at a session site: that path "finds nothing" (default-deny

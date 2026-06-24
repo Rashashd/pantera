@@ -6,7 +6,7 @@
 
 ## Summary
 
-Stand up Pantera's operational and security spine: a one-command Docker Compose stack
+Stand up Vespera's operational and security spine: a one-command Docker Compose stack
 (API + worker skeleton + Vault + Postgres + Redis) where the FastAPI application loads all
 secrets from Vault into memory as the first lifespan step, validates critical dependencies
 and refuses to boot on failure, initializes shared singletons once, exposes a shallow

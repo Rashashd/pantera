@@ -20,7 +20,7 @@ Spec 9 converts severity-bucketed **findings** (spec 8) into **grounded, structu
 
 **Storage**: PostgreSQL + pgvector (reports/findings relational; retrieval reuses existing `chunks`). Redis (existing query-embedding cache; no new Redis state required for v1 HITL).
 
-**Testing**: `pytest` (unit + integration; integration needs `PANTERA_INTEGRATION=1` + docker compose). New golden sets under `tests/data/`. CI eval job extended.
+**Testing**: `pytest` (unit + integration; integration needs `VESPERA_INTEGRATION=1` + docker compose). New golden sets under `tests/data/`. CI eval job extended.
 
 **Target Platform**: Linux server (modular monolith); no new serving container (LangGraph runs in-process in the API; ARQ durability is spec 11).
 
