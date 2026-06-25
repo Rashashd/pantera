@@ -93,6 +93,7 @@ def _parse_efetch_xml(xml_text: str) -> list[RawRecord]:
             "pmid": pmid,
             "doi": doi,
             "title": title,
+            "abstract": summary,
             "published_at": published_at.isoformat() if published_at else None,
         }
 
