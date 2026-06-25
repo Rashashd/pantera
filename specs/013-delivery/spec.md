@@ -10,7 +10,7 @@
 
 ## Context & Why This Spec
 
-Pantera drafts grounded safety reports and a qualified reviewer approves them — but today **approval is the end of the line**. The report status set stops at `approved`, nothing is ever sent to the client, no delivery is confirmed, and a missed reviewer deadline goes unescalated. The whole point of the platform — *the approved report reaching the pharma client* — is unbuilt.
+Vespera drafts grounded safety reports and a qualified reviewer approves them — but today **approval is the end of the line**. The report status set stops at `approved`, nothing is ever sent to the client, no delivery is confirmed, and a missed reviewer deadline goes unescalated. The whole point of the platform — *the approved report reaching the pharma client* — is unbuilt.
 
 This is also the **last spec**, so it deliberately closes out the largest backlog of stubbed UI any spec inherits. Earlier specs built UI and backend that intentionally render "pending" or sit disabled, waiting for delivery to exist: the per-report delivery-status display, the client portal's sent/delivered visibility, the manager dashboard's delivery cards, the report-download and audit-export buttons, the budget-threshold notification, the half-wired LLM tracing, and several smaller controls whose backends already shipped. This spec lights all of them up.
 

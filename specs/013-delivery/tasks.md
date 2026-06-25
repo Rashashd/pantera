@@ -42,7 +42,7 @@ description: "Task list for 013-delivery implementation"
 - [x] T007 [P] Create the `DeliveryAttempt` ORM model (per `(report_id, channel)`; status pending/delivered/failed) in `app/delivery/models.py`
 - [x] T008 [P] Add the SFTP destination columns to the `Client` model in `app/clients/models.py`
 - [x] T009 [P] Add delivery/notification domain events (`ReportDispatched`, `ReportDelivered`, `ReportDeliveryFailed`, `ReportDeliveryHeld`, `ReportResent`, `SlaEscalated`, `AuditExported`) in `app/domain/events.py`
-- [x] T010 Apply + verify migration on the live DB: `uv run alembic upgrade head` reaches `0012`, then verify `downgrade` is clean (`pantera_app` role must exist first) (depends T005, T006, T007, T008)
+- [x] T010 Apply + verify migration on the live DB: `uv run alembic upgrade head` reaches `0012`, then verify `downgrade` is clean (`vespera_app` role must exist first) (depends T005, T006, T007, T008)
 
 **Checkpoint**: schema + states + models ready.
 
@@ -216,7 +216,7 @@ description: "Task list for 013-delivery implementation"
 ### Implementation for User Story 8
 
 - [x] T056 [US8] Add `configure_tracing(settings)` to worker startup immediately after `ctx["settings"] = settings` (mirror `app/core/lifespan.py:64`) in `worker/worker.py`
-- [x] T057 [P] [US8] Add `TRACING_ENABLED: ${TRACING_ENABLED:-false}` / `LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}` / `LANGSMITH_PROJECT: ${LANGSMITH_PROJECT:-pantera}` to BOTH `api` and `worker` services in `docker-compose.yml` (default OFF; flag must be `false`, never empty)
+- [x] T057 [P] [US8] Add `TRACING_ENABLED: ${TRACING_ENABLED:-false}` / `LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}` / `LANGSMITH_PROJECT: ${LANGSMITH_PROJECT:-vespera}` to BOTH `api` and `worker` services in `docker-compose.yml` (default OFF; flag must be `false`, never empty)
 
 **Checkpoint**: flipping the switch traces the real worker pipeline, PII-free.
 
@@ -227,7 +227,7 @@ description: "Task list for 013-delivery implementation"
 - [x] T058 [P] Update runbook/security docs (delivery + SLA flow, callback auth, n8n config) in `docs/`
 - [x] T059 [P] Add/verify a redaction-gate assertion that delivery + notification **logs/traces** carry no fake PII/secret (scope to log + trace values ONLY — the rendered report body delivered to its own client is intentionally NOT redacted) in `tests/integration/` (or extend the existing redaction test)
 - [x] T060 Run `uv run ruff check app worker tests` AND `uv run black --check app worker tests`; fix all
-- [x] T061 Run the full suite (`uv run pytest` + `PANTERA_INTEGRATION=1 uv run pytest tests/integration`); confirm ≥80% overall and ≥95% on delivery DB-write/callback/HITL-adjacent paths
+- [x] T061 Run the full suite (`uv run pytest` + `VESPERA_INTEGRATION=1 uv run pytest tests/integration`); confirm ≥80% overall and ≥95% on delivery DB-write/callback/HITL-adjacent paths
 - [x] T062 Execute `specs/013-delivery/quickstart.md` scenarios A–I against real services (n8n mocked); fix gaps
 - [x] T063 Fresh-clone smoke: `docker compose up` + build/serve the SPA incl. the new Staff/Users screens
 - [x] T064 Cross-check every "does-not-exist-yet" item in `implementation-notes.md` is built; move the resolved spec-13 items to "Resolved" in the frontend-forward-dependency ledger (memory)

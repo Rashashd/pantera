@@ -81,5 +81,5 @@ One migration **`0012_delivery.py`** (`down_revision="0011"`): widen `reports.st
 ## Testing strategy
 
 - **Unit**: `configure_tracing` on/off; overall-status derivation from per-channel attempts; HTML rendering content; sweep tier logic + no-callback flip; callback idempotency.
-- **Integration** (`PANTERA_INTEGRATION=1`, n8n mocked): approve → dispatch (`sent`) → callback → `delivered` (+`delivered_at`); channel failure → `delivery_failed` + alert → re-send → `delivered`; suspended client → held → reactivate → released; SLA Tier-1 then Tier-2; audit export authz (manager all / admin client-watchlist-only / reviewer 403); account-mgmt create reviewer + client-user.
+- **Integration** (`VESPERA_INTEGRATION=1`, n8n mocked): approve → dispatch (`sent`) → callback → `delivered` (+`delivered_at`); channel failure → `delivery_failed` + alert → re-send → `delivered`; suspended client → held → reactivate → released; SLA Tier-1 then Tier-2; audit export authz (manager all / admin client-watchlist-only / reviewer 403); account-mgmt create reviewer + client-user.
 - **Gates**: ≥80% overall, 95% on delivery DB-writes + the callback/HITL-adjacent paths; redaction gate stays green (delivery/notification logs PII-free); fresh-clone smoke builds/serves the SPA with the new screens.

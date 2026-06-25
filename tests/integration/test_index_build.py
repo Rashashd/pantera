@@ -9,8 +9,8 @@ from app.embedding.models import Chunk, DocumentIndexState
 from app.embedding.runner import index_build_runner
 
 pytestmark = pytest.mark.skipif(
-    not os.getenv("PANTERA_INTEGRATION"),
-    reason="requires PANTERA_INTEGRATION=1 and docker compose up",
+    not os.getenv("VESPERA_INTEGRATION"),
+    reason="requires VESPERA_INTEGRATION=1 and docker compose up",
 )
 
 _PUBMED_XML = """<?xml version="1.0"?>

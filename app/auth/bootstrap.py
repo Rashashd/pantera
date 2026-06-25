@@ -14,7 +14,7 @@ _log = structlog.get_logger(__name__)
 
 # Dev fallback: used only when Vault secrets are absent (local/CI without a real Vault).
 # Prod deployments must supply bootstrap_manager_email/password via Vault.
-_DEV_EMAIL = "manager@pantera.local"
+_DEV_EMAIL = "manager@vespera.local"
 _DEV_PASSWORD = "ChangeMe1!"
 
 

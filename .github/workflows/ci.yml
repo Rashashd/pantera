@@ -66,11 +66,11 @@ jobs:
 
           client = hvac.Client(url=os.environ["VAULT_ADDR"], token=os.environ["VAULT_TOKEN"])
           client.secrets.kv.v2.create_or_update_secret(
-              path="pantera/secrets",
+              path="vespera/secrets",
               secret={
-                  "database_url": "postgresql+asyncpg://pantera:pantera@localhost:5432/pantera",
-                  # spec 12: least-priv runtime DSN (pantera_app role, created in the bootstrap step).
-                  "app_database_url": "postgresql+asyncpg://pantera_app:pantera_app@localhost:5432/pantera",
+                  "database_url": "postgresql+asyncpg://vespera:vespera@localhost:5432/vespera",
+                  # spec 12: least-priv runtime DSN (vespera_app role, created in the bootstrap step).
+                  "app_database_url": "postgresql+asyncpg://vespera_app:vespera_app@localhost:5432/vespera",
                   "redis_url": "redis://localhost:6379/0",
                   "anthropic_api_key": "ci-test-key",
                   # spec 2: required at boot; signs JWTs in the auth integration tests.
@@ -87,13 +87,13 @@ jobs:
           )
           print("secrets written")
           PY
-      - name: Create least-privilege pantera_app role (spec 12; bootstrap, not a migration)
-        run: docker compose exec -T postgres psql -U pantera -d pantera -f - < scripts/db/init-pantera-app-role.sql
+      - name: Create least-privilege vespera_app role (spec 12; bootstrap, not a migration)
+        run: docker compose exec -T postgres psql -U vespera -d vespera -f - < scripts/db/init-vespera-app-role.sql
       - name: Apply migrations
         run: uv run alembic upgrade head
       - name: Tests with coverage (80% overall gate)
         env:
-          PANTERA_INTEGRATION: "1"
+          VESPERA_INTEGRATION: "1"
           # PYTHONPATH needed so test_eval_gate.py can import/subprocess eval/classifier/run_eval.py
           PYTHONPATH: "."
           # Integration tests read DB/Redis URLs from Vault, not the environment; we keep

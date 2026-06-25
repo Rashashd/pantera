@@ -12,7 +12,7 @@ class ModelserverConfig(BaseSettings):
 
     vault_addr: str = "http://vault:8200"
     vault_token: str = "root"
-    vault_secret_path: str = "pantera/secrets"
+    vault_secret_path: str = "vespera/secrets"
 
     model_dir: Path = Path("modelserver/models")
     max_batch: int = 128

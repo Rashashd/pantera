@@ -93,6 +93,7 @@ def _parse_efetch_xml(xml_text: str) -> list[RawRecord]:
             "pmid": pmid,
             "doi": doi,
             "title": title,
+            "abstract": summary,
             "published_at": published_at.isoformat() if published_at else None,
         }
 
@@ -119,13 +120,13 @@ class PubMedAdapter:
     name = SourceName.PUBMED
     reliability = SourceReliability.PEER_REVIEWED
 
-    def __init__(self, *, api_key: str = "", ncbi_tool_email: str = "pantera@example.com") -> None:
+    def __init__(self, *, api_key: str = "", ncbi_tool_email: str = "vespera@example.com") -> None:
         self._api_key = api_key
         self._tool_email = ncbi_tool_email
         self._semaphore = get_source_semaphore(SourceName.PUBMED.value)
 
     def _base_params(self) -> dict:
-        params: dict = {"tool": "pantera", "email": self._tool_email, "retmode": "json"}
+        params: dict = {"tool": "vespera", "email": self._tool_email, "retmode": "json"}
         if self._api_key:
             params["api_key"] = self._api_key
         return params

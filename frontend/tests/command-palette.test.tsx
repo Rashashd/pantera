@@ -17,8 +17,8 @@ const REVIEWER = {
 };
 
 beforeEach(() => {
-  localStorage.setItem("pantera_token", "token");
-  localStorage.setItem("pantera_user", JSON.stringify(REVIEWER));
+  localStorage.setItem("vespera_token", "token");
+  localStorage.setItem("vespera_user", JSON.stringify(REVIEWER));
 });
 
 function TestWrapper() {

@@ -126,7 +126,7 @@ config that belongs server-side; keeps a single source of truth).
 ## R7. LangSmith tracing (FR-032)
 
 **Decision**: Enable LangSmith tracing via the standard env vars set from config at startup
-(`LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY=<vault secret>`, `LANGCHAIN_PROJECT=pantera`) —
+(`LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY=<vault secret>`, `LANGCHAIN_PROJECT=vespera`) —
 **only when the key is configured** (empty key ⇒ tracing disabled, app still boots). The LangGraph
 agent traces automatically (it uses LangChain chat models). The triage call bypasses LangChain
 (raw httpx in `app/triage/llm.py`), so wrap `_call_llm` (or `resolve_yes_no`/`assess_valence`) with
@@ -147,7 +147,7 @@ the existing LangChain agent). Making tracing mandatory at boot (would force the
 ## R8. Config & secrets placement (FR-035)
 
 **Decision**: Add to `app/core/config.py:Settings`: `langsmith_api_key: str = ""` (secret, from
-Vault, **optional** — not in `_REQUIRED_SECRETS`), `langsmith_project: str = "pantera"`,
+Vault, **optional** — not in `_REQUIRED_SECRETS`), `langsmith_project: str = "vespera"`,
 `tracing_enabled: bool` (derived/explicit), and a per-model pricing map, e.g.
 `llm_price_per_1k_input` / `llm_price_per_1k_output` keyed by the pinned model names
 (`anthropic_model`, `openai_model`), with the **unit (per-1K-tokens) and currency (USD)** documented

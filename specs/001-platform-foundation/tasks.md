@@ -74,7 +74,7 @@ Redis in turn and confirm the app refuses to boot with a specific error each tim
 
 ### Implementation for User Story 1
 
-- [X] T018 [US1] Implement `load_secrets_from_vault(settings)` (KV v2 `pantera/secrets`, required keys: database_url, redis_url, ≥1 LLM key; raise on unauth/unreachable/missing) in `app/core/startup.py`
+- [X] T018 [US1] Implement `load_secrets_from_vault(settings)` (KV v2 `vespera/secrets`, required keys: database_url, redis_url, ≥1 LLM key; raise on unauth/unreachable/missing) in `app/core/startup.py`
 - [X] T019 [US1] Implement `check_database`, `check_redis`, `check_model_artifacts` (hash check no-op when absent) + `run_startup_checks` in `app/core/startup.py`
 - [X] T020 [US1] Implement LLM adapter `build_llm_client(settings)` selecting provider by available key in `app/infra/llm_adapter.py`
 - [X] T021 [US1] Wire lifespan ordering (secrets → engine → redis → llm → checks → yield → dispose engine/close redis) in `app/core/lifespan.py`

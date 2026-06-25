@@ -32,7 +32,7 @@ SQLAlchemy async + asyncpg, Alembic, structlog, tenacity. No new runtime depende
 (`redis_url` from Vault; `rediss://` TLS in prod).
 
 **Testing**: pytest. New `tests/integration/test_scheduling_reliability.py` (the merge-gate suite) +
-`tests/unit/` for due-selection and budget-policy logic. Integration needs `PANTERA_INTEGRATION=1` + the
+`tests/unit/` for due-selection and budget-policy logic. Integration needs `VESPERA_INTEGRATION=1` + the
 compose stack; the reliability suite drives ARQ in **burst mode** (`worker.run_check` / direct coroutine
 calls) and toggles `jobs_inline` to prove parity.
 

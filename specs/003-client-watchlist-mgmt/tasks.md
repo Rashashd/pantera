@@ -151,7 +151,7 @@ description: "Task list for Client & Watchlist Management (spec 3)"
 - [X] T030 [P] Update `docs/RUNBOOK.md` with the `seed_client.py` operator flow and the `/clients`, `/watchlists` endpoints
 - [X] T031 [P] Verify one-sentence module docstrings on every new file and that no file exceeds ~300 lines (split `app/clients/routes_watchlists.py` if needed)
 - [X] T032 Run `uv run ruff check app worker tests scripts` and `uv run black --check app worker tests scripts`; fix all findings
-- [X] T033 Run `PANTERA_INTEGRATION=1 uv run pytest` (full stack up) — confirm green, config-write paths ≥95%, overall ≥80%
+- [X] T033 Run `VESPERA_INTEGRATION=1 uv run pytest` (full stack up) — confirm green, config-write paths ≥95%, overall ≥80%
 - [X] T034 Execute `specs/003-client-watchlist-mgmt/quickstart.md` end-to-end against the live stack
 
 ---

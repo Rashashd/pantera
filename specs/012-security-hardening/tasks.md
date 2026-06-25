@@ -97,7 +97,7 @@ description: "Task list for 012-security-hardening implementation"
 
 **Goal**: All `client_id`-bearing tables enforce client scoping at the DB layer; client-users see only their own rows even on an unfiltered query; staff/system act across clients; default-deny when context unset.
 
-**Independent Test**: As `pantera_app` with no context → 0 rows; with client context → only that client's rows; with staff context → all; cross-client INSERT rejected; migrations/seed succeed on the privileged role. Run `tests/integration/test_rls_isolation.py`.
+**Independent Test**: As `vespera_app` with no context → 0 rows; with client context → only that client's rows; with staff context → all; cross-client INSERT rejected; migrations/seed succeed on the privileged role. Run `tests/integration/test_rls_isolation.py`.
 
 ### Tests for User Story 3
 
@@ -105,8 +105,8 @@ description: "Task list for 012-security-hardening implementation"
 
 ### Implementation for User Story 3
 
-- [x] T027 [US3] DB role bootstrap: idempotent `CREATE ROLE pantera_app LOGIN PASSWORD … NOSUPERUSER NOBYPASSRLS` via a docker-compose postgres init script + a CI step on the fresh Postgres service (password matches `app_database_url`). NOT in the migration.
-- [x] T028 [US3] Migration `app/db/migrations/versions/0011_rls_policies.py` (`revision="0011"`, `down_revision="0010"`): loop the policied-table list (`contracts/rls-policies.md`) applying `ENABLE`+`FORCE ROW LEVEL SECURITY` + `tenant_isolation` policy (USING + WITH CHECK) + `GRANT … TO pantera_app`; `clients` keys on `id`; `users`/`audit_log` exempt. Working downgrade (drop policy/NO FORCE/DISABLE/revoke; do NOT drop role).
+- [x] T027 [US3] DB role bootstrap: idempotent `CREATE ROLE vespera_app LOGIN PASSWORD … NOSUPERUSER NOBYPASSRLS` via a docker-compose postgres init script + a CI step on the fresh Postgres service (password matches `app_database_url`). NOT in the migration.
+- [x] T028 [US3] Migration `app/db/migrations/versions/0011_rls_policies.py` (`revision="0011"`, `down_revision="0010"`): loop the policied-table list (`contracts/rls-policies.md`) applying `ENABLE`+`FORCE ROW LEVEL SECURITY` + `tenant_isolation` policy (USING + WITH CHECK) + `GRANT … TO vespera_app`; `clients` keys on `id`; `users`/`audit_log` exempt. Working downgrade (drop policy/NO FORCE/DISABLE/revoke; do NOT drop role).
 - [x] T029 [US3] Implement `app/db/rls.py:set_rls_context(session, *, client_id, is_staff)` using `set_config('app.current_client_id'|'app.is_staff', …, true)` (transaction-local).
 - [x] T030 [US3] Switch the runtime engine to `app_database_url` + `connect_args={"statement_cache_size": 0}` in `app/db/base.py:create_engine`; update `app/core/lifespan.py:65` and the worker engine to use `app_database_url`. Migrations/seed/`env.py` stay on `database_url`.
 - [x] T031 [US3] Set request RLS context in `app/auth/dependencies.py:current_active_principal` right after `session.get(User, …)`: client-user → `(client_id=user.client_id, is_staff=False)`, staff → `(client_id=None, is_staff=True)`.
@@ -148,7 +148,7 @@ description: "Task list for 012-security-hardening implementation"
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [x] T037 [P] Add `docs/` runbook updates: guardrails sidecar ops, RLS role provisioning (`pantera_app`), redaction behavior, tracing re-enable procedure.
+- [x] T037 [P] Add `docs/` runbook updates: guardrails sidecar ops, RLS role provisioning (`vespera_app`), redaction behavior, tracing re-enable procedure.
 - [x] T038 [P] Add `docs/DECISIONS.md` entries: guardrails engine choice (+ torch-free/nemoguardrails deviation if the literal library isn't used, research R1), RLS two-role design.
 - [x] T039 Run `quickstart.md` validation — all 5 scenarios on the live stack (RLS isolation, redaction leak=0, red-team block + fail-safe, trace redaction, deviation closure). Do NOT trust green checkmarks ([[verify-before-claiming-done]]).
 - [x] T040 Full gate: `ruff check` + `black --check` on `app worker guardrails tests`; `pytest tests/unit` + `pytest tests/integration` (live DB); coverage ≥80% overall (auth/HITL/DB-write ≥95%); both new eval gates pass. **Also verify SC-004 (no redaction regression):** run the existing triage golden-set and RAG golden-set eval gates with redaction active in the path, confirming triage recall + report grounding stay ≥ their committed `eval_thresholds.yaml` thresholds (confirm those gates exercise the redacted path; if they bypass it, add a redacted-path variant) — resolves analyze G2.

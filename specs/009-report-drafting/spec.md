@@ -10,14 +10,14 @@
 
 ## Overview
 
-Pantera has already turned raw literature into classified, severity-bucketed **findings** (spec 8) and can retrieve corroborating evidence across the indexed corpus (spec 7). This feature is the next link in the spine: it converts a finding into a **grounded, structured safety report** drafted by a bounded agentic pipeline, and holds every report behind a **mandatory human-reviewer approval gate** before it is eligible for delivery.
+Vespera has already turned raw literature into classified, severity-bucketed **findings** (spec 8) and can retrieve corroborating evidence across the indexed corpus (spec 7). This feature is the next link in the spine: it converts a finding into a **grounded, structured safety report** drafted by a bounded agentic pipeline, and holds every report behind a **mandatory human-reviewer approval gate** before it is eligible for delivery.
 
 Two report modes exist, both grounded in retrieved evidence:
 
 - **Expedited report** — drafted immediately, one per `urgent`/`emergency` finding, with a reviewer SLA deadline.
 - **Batch report** — one consolidated document per client per cycle, aggregating all accumulated `minor`/`positive` findings.
 
-This feature ends at an **approved / ready-to-send** report. Actual outbound delivery (email/SFTP routing, delivery callbacks) is a later concern, as is the reviewer's browser UI. The non-negotiable principle this feature enforces: **Pantera never sends anything, and never finalizes a report, without a logged human-reviewer decision; and every claim in a report cites a real retrieved source passage.**
+This feature ends at an **approved / ready-to-send** report. Actual outbound delivery (email/SFTP routing, delivery callbacks) is a later concern, as is the reviewer's browser UI. The non-negotiable principle this feature enforces: **Vespera never sends anything, and never finalizes a report, without a logged human-reviewer decision; and every claim in a report cites a real retrieved source passage.**
 
 ## Clarifications
 

@@ -17,7 +17,7 @@ def _config(**kwargs) -> ModelserverConfig:
     defaults = {
         "vault_addr": "http://vault:8200",
         "vault_token": "root",
-        "vault_secret_path": "pantera/secrets",
+        "vault_secret_path": "vespera/secrets",
         "modelserver_token": "",
     }
     defaults.update(kwargs)

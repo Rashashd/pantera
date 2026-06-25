@@ -51,9 +51,9 @@ describe("RequireRole", () => {
 
   it("allows access when the user has the required role", async () => {
     // Pre-seed localStorage for a reviewer session
-    localStorage.setItem("pantera_token", "test-token");
+    localStorage.setItem("vespera_token", "test-token");
     localStorage.setItem(
-      "pantera_user",
+      "vespera_user",
       JSON.stringify({
         id: 1,
         email: "reviewer@example.com",
@@ -71,9 +71,9 @@ describe("RequireRole", () => {
   });
 
   it("blocks access and redirects to role default when wrong role", async () => {
-    localStorage.setItem("pantera_token", "test-token");
+    localStorage.setItem("vespera_token", "test-token");
     localStorage.setItem(
-      "pantera_user",
+      "vespera_user",
       JSON.stringify({
         id: 2,
         email: "client@example.com",

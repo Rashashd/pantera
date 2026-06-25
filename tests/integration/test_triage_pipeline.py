@@ -6,7 +6,7 @@ import pytest
 import pytest_asyncio
 
 pytestmark = pytest.mark.skipif(
-    not os.getenv("PANTERA_INTEGRATION"), reason="integration tests require PANTERA_INTEGRATION=1"
+    not os.getenv("VESPERA_INTEGRATION"), reason="integration tests require VESPERA_INTEGRATION=1"
 )
 
 _DRUG = "ibuprofen"

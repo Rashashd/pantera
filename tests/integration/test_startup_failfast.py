@@ -16,7 +16,7 @@ async def test_refuses_when_vault_unreachable():
 
 
 @pytest.mark.skipif(
-    not os.getenv("PANTERA_INTEGRATION"),
+    not os.getenv("VESPERA_INTEGRATION"),
     reason="requires the Compose stack (Postgres + Redis)",
 )
 async def test_database_check_raises_when_unreachable():
@@ -32,7 +32,7 @@ async def test_database_check_raises_when_unreachable():
 
 
 @pytest.mark.skipif(
-    not os.getenv("PANTERA_INTEGRATION"),
+    not os.getenv("VESPERA_INTEGRATION"),
     reason="requires the Compose stack (Redis)",
 )
 async def test_redis_check_raises_when_unreachable():

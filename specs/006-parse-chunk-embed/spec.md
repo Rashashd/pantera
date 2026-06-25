@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Parse, chunk, and embed all ingested documents into the pgvector RAG index — parser router by source type, typed section-aware chunks, embeddings via the modelserver medical ONNX embedder, per-client scoping (spec 6 of the Pantera 13-spec build order). Owns the document parsing/chunking/embedding deferred from spec 4; produces the indexable substrate that spec 7 retrieval consumes."
+**Input**: User description: "Parse, chunk, and embed all ingested documents into the pgvector RAG index — parser router by source type, typed section-aware chunks, embeddings via the modelserver medical ONNX embedder, per-client scoping (spec 6 of the Vespera 13-spec build order). Owns the document parsing/chunking/embedding deferred from spec 4; produces the indexable substrate that spec 7 retrieval consumes."
 
 ## Overview
 
@@ -35,7 +35,7 @@ It does **not** retrieve, rerank, aggregate corroboration, classify, or draft. I
 
 ### User Story 1 - Make a client's documents searchable (Priority: P1)
 
-As the platform operating Pantera, once literature has been ingested for a client, the system must turn those raw documents into an embedded, searchable index so that downstream retrieval, triage, and report drafting have grounded evidence to work from. An operator initiates the index build for a client via a manual trigger (ingestion does not auto-start it in v1); every stored document that has not yet been indexed is parsed into chunks, each chunk is embedded by the medical embedder, and the chunks are persisted scoped to that client.
+As the platform operating Vespera, once literature has been ingested for a client, the system must turn those raw documents into an embedded, searchable index so that downstream retrieval, triage, and report drafting have grounded evidence to work from. An operator initiates the index build for a client via a manual trigger (ingestion does not auto-start it in v1); every stored document that has not yet been indexed is parsed into chunks, each chunk is embedded by the medical embedder, and the chunks are persisted scoped to that client.
 
 **Why this priority**: This is the spine of the spec — without embedded chunks there is no corpus for RAG. A single source type (e.g., PubMed) parsed, embedded, and stored already delivers a demonstrable, searchable index and unblocks spec 7. Everything else refines breadth, efficiency, and resilience.
 

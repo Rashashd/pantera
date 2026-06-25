@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "auth-and-roles — fastapi-users JWT, admin/reviewer roles, role guards, slowapi rate limiting (spec 2 of the Pantera 13-spec build order)"
+**Input**: User description: "auth-and-roles — fastapi-users JWT, admin/reviewer roles, role guards, slowapi rate limiting (spec 2 of the Vespera 13-spec build order)"
 
 ## Clarifications
 
@@ -22,7 +22,7 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
-Pantera is a regulated B2B pharmacovigilance platform. Until now (spec 1) the API had no notion of *who* is calling it. This feature establishes identity: every protected action is performed by a known, authenticated person who holds a specific role within a specific client (tenant). The two roles are **admin** (manages users and configuration) and **reviewer** (the only role authorized to approve a safety report for delivery, per the constitution's Human-in-the-Loop principle). This spec does not build the approval flow itself — it builds the identity and authorization foundation every later spec depends on.
+Vespera is a regulated B2B pharmacovigilance platform. Until now (spec 1) the API had no notion of *who* is calling it. This feature establishes identity: every protected action is performed by a known, authenticated person who holds a specific role within a specific client (tenant). The two roles are **admin** (manages users and configuration) and **reviewer** (the only role authorized to approve a safety report for delivery, per the constitution's Human-in-the-Loop principle). This spec does not build the approval flow itself — it builds the identity and authorization foundation every later spec depends on.
 
 ### User Story 1 - Authenticate and obtain a session (Priority: P1)
 

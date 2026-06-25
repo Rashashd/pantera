@@ -17,7 +17,7 @@ export class ApiError extends Error {
 }
 
 function getToken(): string | null {
-  return localStorage.getItem("pantera_token");
+  return localStorage.getItem("vespera_token");
 }
 
 export async function apiClient<T>(

@@ -4,7 +4,7 @@ This feature adds **no new business tables**. It adds: database RLS policies + a
 
 ## 1. RLS policies (migration 0011)
 
-For each `client_id`-bearing table: `ALTER TABLE … ENABLE ROW LEVEL SECURITY; ALTER TABLE … FORCE ROW LEVEL SECURITY;` then one `tenant_isolation` policy (template in `contracts/rls-policies.md`), plus `GRANT SELECT/INSERT/UPDATE/DELETE … TO pantera_app`.
+For each `client_id`-bearing table: `ALTER TABLE … ENABLE ROW LEVEL SECURITY; ALTER TABLE … FORCE ROW LEVEL SECURITY;` then one `tenant_isolation` policy (template in `contracts/rls-policies.md`), plus `GRANT SELECT/INSERT/UPDATE/DELETE … TO vespera_app`.
 
 **Policied tables (~22)** — verified against live models:
 
@@ -26,7 +26,7 @@ For each `client_id`-bearing table: `ALTER TABLE … ENABLE ROW LEVEL SECURITY; 
 
 **Nullable-`client_id` note**: `dead_letter.client_id` and `audit_log.client_id` are nullable (system rows). For `dead_letter` (policied), a NULL `client_id` row is visible only to staff (`is_staff='on'`); the predicate `client_id = …` is false for NULL, so client-users never see system rows — correct.
 
-**New role**: `pantera_app` (LOGIN, NOSUPERUSER, NOBYPASSRLS, not table owner) — provisioned at DB bootstrap (R5), not in the migration. Migration GRANTs table privileges to it.
+**New role**: `vespera_app` (LOGIN, NOSUPERUSER, NOBYPASSRLS, not table owner) — provisioned at DB bootstrap (R5), not in the migration. Migration GRANTs table privileges to it.
 
 **Downgrade**: drop policies, `NO FORCE`, `DISABLE ROW LEVEL SECURITY`, revoke grants (role drop NOT in downgrade — role is bootstrap-managed).
 

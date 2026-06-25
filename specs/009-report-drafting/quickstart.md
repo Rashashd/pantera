@@ -8,7 +8,7 @@ End-to-end scenarios that prove the feature works. Implementation lives in `task
 - Migrate: `uv run alembic upgrade head` (applies `0008`).
 - Secrets in Vault incl. an LLM provider key (`anthropic_api_key` or `openai_api_key`). If 0008 adds a required secret, also add it to the inline writer in `.github/workflows/ci.yml` (spec-2 CI lesson).
 - A client with an indexed corpus (run spec 4→6→7 path) and spec-8 triage producing findings.
-- Env: `PANTERA_INTEGRATION=1` for integration tests.
+- Env: `VESPERA_INTEGRATION=1` for integration tests.
 
 ## Scenario 1 — Expedited grounded draft (US1, P1)
 
@@ -62,5 +62,5 @@ As a `reviewer`:
 ```
 uv run ruff check app tests
 uv run black --check app worker tests   # both ruff AND black
-uv run pytest                            # unit; add PANTERA_INTEGRATION=1 for integration
+uv run pytest                            # unit; add VESPERA_INTEGRATION=1 for integration
 ```

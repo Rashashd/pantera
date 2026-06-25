@@ -19,7 +19,7 @@ const config: Config = {
       },
       colors: {
         // Named brand palette (design-system.md §2)
-        pantera: {
+        vespera: {
           navy: "hsl(214 56% 12%)",
           navy2: "hsl(210 45% 15%)",
           teal: "hsl(180 65% 33%)",

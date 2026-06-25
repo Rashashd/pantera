@@ -296,7 +296,7 @@ planted-instruction case whose outcome must not change.
   existing `embed_chunked` mock at conftest.py:330). Use this to drive triage tests without a live model.
 - For the LLM, inject a fake by patching `app/triage/llm.py` call functions (monkeypatch) — do not hit a
   real provider in tests. Fail-safe tests (T031) patch it to raise.
-- Integration tests need `PANTERA_INTEGRATION=1` + docker compose (host: the gitignored
+- Integration tests need `VESPERA_INTEGRATION=1` + docker compose (host: the gitignored
   `docker-compose.override.yml` on 5433/6380 + Vault repoint — see `memory/host-integration-test-vault-repoint`).
 - The classifier contract test (`tests/integration/test_classify_contract.py`) shows the
   `is_adverse == (confidence >= 0.5)` relationship and the `ms_authed` ASGI pattern.

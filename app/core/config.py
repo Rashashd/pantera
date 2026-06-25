@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # --- Vault bootstrap (the ONLY values read from the environment) ---
     vault_addr: str = "http://vault:8200"
     vault_token: str = "root"  # dev-mode convention; production holds only this token
-    vault_secret_path: str = "pantera/secrets"
+    vault_secret_path: str = "vespera/secrets"
 
     # --- Deployment environment (spec 12) ---
     # Drives production-only safety guards (e.g. the guardrails/redaction kill-switch guard,
@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     openfda_api_key: str = ""  # openFDA API key; empty ⇒ keyless (240 req/min limit)
 
     # --- Ingestion: non-secret configuration ---
-    ncbi_tool_email: str = "pantera@example.com"  # sent to NCBI as courtesy identification
+    ncbi_tool_email: str = "vespera@example.com"  # sent to NCBI as courtesy identification
     ingestion_initial_lookback_days: int = 365  # first-run lookback window (D9)
     ingestion_per_source_cap: int = 200  # max records fetched per source per run (D9)
 
@@ -83,7 +83,7 @@ class Settings(BaseSettings):
 
     # --- Security hardening (spec 12) ---
     guardrails_url: str = "http://guardrails:8002"  # sidecar base URL (non-secret config)
-    app_database_url: str = ""  # least-priv pantera_app DSN; from Vault (_REQUIRED_SECRETS)
+    app_database_url: str = ""  # least-priv vespera_app DSN; from Vault (_REQUIRED_SECRETS)
     # Kill-switches are NON-PRODUCTION / TEST-ONLY: they let the test suite isolate
     # non-guarded / non-redacted behaviour. They MUST NEVER bypass the mandatory boundary in
     # production — startup (T002a) refuses to boot if either is False when environment==production
@@ -107,7 +107,7 @@ class Settings(BaseSettings):
     # --- LangSmith tracing (spec 10 FR-032/035) — optional; empty disables tracing ---
     # NOT in _REQUIRED_SECRETS: app boots normally when empty.
     langsmith_api_key: str = ""
-    langsmith_project: str = "pantera"
+    langsmith_project: str = "vespera"
     # Master switch: tracing requires BOTH this True AND a key. Default False. Traces carry
     # unredacted clinical text on the agent path — keep OFF in production until Presidio (spec 12).
     tracing_enabled: bool = False

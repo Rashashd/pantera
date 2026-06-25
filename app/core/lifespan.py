@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_tracing(settings)
 
     # 2. Build shared singletons exactly once. Runtime connects as the least-privilege
-    # pantera_app role (RLS-enforced); migrations/seed keep the privileged database_url.
+    # vespera_app role (RLS-enforced); migrations/seed keep the privileged database_url.
     engine = create_engine(settings.app_database_url)
     redis = await create_redis(settings.redis_url)
     llm = build_llm_client(settings)

@@ -1,8 +1,8 @@
 /**
- * Pantera lockup — the panther icon (brand SVG, teal, reads on any background)
- * beside or above the "PANTERA™" wordmark set in Montserrat to match the logo
+ * Vespera lockup — the panther icon (brand SVG, teal, reads on any background)
+ * beside or above the "VESPERA™" wordmark set in Montserrat to match the logo
  * art. Wordmark color is inherited from the parent (`text-foreground`,
- * `text-pantera-cloud`, …). Optional tagline mirrors the logo lockup.
+ * `text-vespera-cloud`, …). Optional tagline mirrors the logo lockup.
  */
 import { PantherMark } from "@/components/PantherMark";
 
@@ -39,7 +39,7 @@ export function Wordmark({
           </sup>
         </span>
         {showTagline && (
-          <span className="mt-2 block font-mono text-[0.625rem] uppercase tracking-[0.2em] text-pantera-tealLt">
+          <span className="mt-2 block font-mono text-[0.625rem] uppercase tracking-[0.2em] text-vespera-tealLt">
             Automated vigilance · Human precision
           </span>
         )}

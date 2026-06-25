@@ -27,7 +27,7 @@ new Vault secrets.**
 `watchlist_items`, `watchlist_budget_usage`; a new FK `users.client_id → clients.id`.
 
 **Testing**: `uv run pytest` (unit + integration); integration tests need
-`PANTERA_INTEGRATION=1` + the live stack (see [dev-environment](../../memory/dev-environment.md)).
+`VESPERA_INTEGRATION=1` + the live stack (see [dev-environment](../../memory/dev-environment.md)).
 
 **Target Platform**: Linux container (api service in the existing docker-compose modular monolith).
 

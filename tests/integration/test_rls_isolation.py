@@ -1,7 +1,7 @@
 """US3 RLS isolation (needs live Postgres + both roles): default-deny, scope, staff, write-reject.
 
 Seeds via the privileged role (bypasses RLS, like migrations/seed), then asserts the
-least-privilege pantera_app role enforces tenant isolation under per-transaction context.
+least-privilege vespera_app role enforces tenant isolation under per-transaction context.
 Also asserts FR-020: a staff cross-client action under staff context still records an audit row
 naming the target client (RLS staff-context must not break attribution; analyze G1).
 """
@@ -20,13 +20,13 @@ from app.db.base import create_engine, create_session_factory
 from app.db.rls import set_rls_context
 
 pytestmark = pytest.mark.skipif(
-    not os.getenv("PANTERA_INTEGRATION"), reason="requires live Postgres + pantera_app role"
+    not os.getenv("VESPERA_INTEGRATION"), reason="requires live Postgres + vespera_app role"
 )
 
 
 @pytest_asyncio.fixture
 async def app_factory(auth_app):
-    """Least-privilege (pantera_app) session factory — RLS-enforced runtime role."""
+    """Least-privilege (vespera_app) session factory — RLS-enforced runtime role."""
     engine = create_engine(auth_app.state.settings.app_database_url)
     try:
         yield create_session_factory(engine)

@@ -35,7 +35,7 @@ Full rationale in `specs/002-auth-and-roles/research.md` (D1–D13). Project-lev
   and is required for credential-stuffing / forensic investigation. Passwords and hashes are
   never stored or logged.
 - **Bootstrap email must use a deliverable domain** — `UserRead.email` is `EmailStr`, which
-  rejects reserved TLDs (e.g. `.local`) on read-back; the seed default is `admin@pantera.io`.
+  rejects reserved TLDs (e.g. `.local`) on read-back; the seed default is `admin@vespera.io`.
 - **Login rate limit 5/min/IP (no account lockout)** — per-IP throttling avoids an
   account-lockout denial-of-service vector.
 
@@ -186,9 +186,9 @@ Three independent layers harden the existing pipeline; the two spec-8 triage dev
   + Vault). Uses `en_core_web_sm` (torch-free) for PII NER — **NOT** scispaCy `en_ner_bc5cdr_md`
   (a biomedical NER, not PII) — plus custom SECRET / MEDICAL_RECORD / US_SSN recognizers. Logs/traces
   use a fast spaCy-free regex scrubber (`scrub_text`) to avoid blocking the event loop.
-- **RLS two-role design.** Runtime connects as a new least-privilege `pantera_app` role
+- **RLS two-role design.** Runtime connects as a new least-privilege `vespera_app` role
   (`app_database_url`, NOBYPASSRLS, `statement_cache_size=0` for PgBouncer-forward); migrations/seed
-  keep the privileged `pantera` role (`database_url`). Migration 0011 applies FORCE RLS +
+  keep the privileged `vespera` role (`database_url`). Migration 0011 applies FORCE RLS +
   role-aware `tenant_isolation` policies on all 21 `client_id` tables (`clients` keys on `id`);
   `users`/`audit_log` are documented exemptions (login resolves the user pre-context; identity
   isolation stays at the app layer). Context is per-transaction via `set_config(...,true)`; **unset =

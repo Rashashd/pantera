@@ -35,7 +35,7 @@ All decisions below resolve the spec's design choices and the two checklist item
 ## D3 — Secret loading via Vault + hvac
 
 - **Decision**: `load_secrets_from_vault(settings)` is the first call in `lifespan`; it reads
-  KV v2 path `pantera/secrets` using `hvac` with `VAULT_ADDR`/`VAULT_TOKEN` from the
+  KV v2 path `vespera/secrets` using `hvac` with `VAULT_ADDR`/`VAULT_TOKEN` from the
   container environment, populates the empty secret fields on `Settings` in memory, and
   raises (aborting boot) if Vault is unauthenticated/unreachable or a required key is
   missing. Required keys for this feature: `database_url`, `redis_url`, and at least one of

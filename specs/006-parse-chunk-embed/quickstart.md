@@ -50,6 +50,6 @@ Validation/run guide. Implementation details live in `tasks.md`; data shapes in
 
 ## Tests
 - `uv run pytest tests/unit -q` (parsers, chunker, tokenizer, selection, failure classification).
-- `PANTERA_INTEGRATION=1 uv run pytest tests/integration -q` (build, idempotency, isolation,
+- `VESPERA_INTEGRATION=1 uv run pytest tests/integration -q` (build, idempotency, isolation,
   concurrency, auth, no-PII-logs, migration). Lint: `uv run ruff check .` **and**
   `uv run black --check app tests`.

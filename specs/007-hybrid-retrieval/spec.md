@@ -10,7 +10,7 @@
 
 ## Overview
 
-Spec 6 built the **index** half of Pantera's RAG pipeline: every ingested document is parsed,
+Spec 6 built the **index** half of Vespera's RAG pipeline: every ingested document is parsed,
 chunked, embedded with the medical sentence transformer, and stored in a per-client, hybrid-ready
 chunk index (dense vectors + lexical full-text). This spec builds the **query** half: given a
 question — a candidate adverse-event signal, a drug + reaction, a reviewer's lookup — return the most
@@ -74,7 +74,7 @@ appears.
 A reaction may be described in paraphrase (semantic match) or named by an exact term, drug code, or
 rare abbreviation (lexical match). The analyst needs both kinds of evidence found in one ranked list.
 
-**Why this priority**: This is Pantera's "one justified RAG improvement" (Brief §5-D). Dense search
+**Why this priority**: This is Vespera's "one justified RAG improvement" (Brief §5-D). Dense search
 alone misses exact rare tokens; lexical alone misses paraphrase. Fusing them is what makes retrieval
 trustworthy for safety signals — and it must be *proven* to beat a single-method baseline with a
 golden-set number, not asserted.

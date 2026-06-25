@@ -63,10 +63,10 @@ Context is set per transaction via `SELECT set_config('app.current_client_id', :
 ## R5 — Two-role split & provisioning
 
 **Decision**: 
-- **App runtime role** (`pantera_app`, least-privilege, NOT owner, NOT superuser, NOT BYPASSRLS) — used by the FastAPI app + ARQ worker via a new `app_database_url` secret. Subject to FORCE RLS.
-- **Privileged role** (existing `pantera`, DB owner/superuser in dev) — used by Alembic migrations + seed scripts via the existing `database_url`. Bypasses RLS for schema/seed.
+- **App runtime role** (`vespera_app`, least-privilege, NOT owner, NOT superuser, NOT BYPASSRLS) — used by the FastAPI app + ARQ worker via a new `app_database_url` secret. Subject to FORCE RLS.
+- **Privileged role** (existing `vespera`, DB owner/superuser in dev) — used by Alembic migrations + seed scripts via the existing `database_url`. Bypasses RLS for schema/seed.
 
-Role + password are provisioned at **DB bootstrap**, not inside the migration: docker-compose runs an init SQL (`CREATE ROLE pantera_app LOGIN PASSWORD ...`), CI adds a step creating the role on the fresh Postgres service, and `write_secrets.py` writes `app_database_url` with the matching password. Migration **0011** only does `GRANT`s + `ENABLE/FORCE RLS` + `CREATE POLICY` (assumes the role exists; idempotent-guarded).
+Role + password are provisioned at **DB bootstrap**, not inside the migration: docker-compose runs an init SQL (`CREATE ROLE vespera_app LOGIN PASSWORD ...`), CI adds a step creating the role on the fresh Postgres service, and `write_secrets.py` writes `app_database_url` with the matching password. Migration **0011** only does `GRANT`s + `ENABLE/FORCE RLS` + `CREATE POLICY` (assumes the role exists; idempotent-guarded).
 
 **Rationale**: The user's clarify decision explicitly chose a dedicated least-privilege role + new secret. Keeping role/password provisioning out of the migration respects "secrets only in Vault" and keeps the migration portable. `env.py` and seed scripts stay on `database_url` (no change). Only `lifespan.py:65` and the worker switch to `app_database_url`.
 

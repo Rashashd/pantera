@@ -3,7 +3,7 @@
 set_rls_context writes two transaction-local GUCs read by the tenant_isolation policies
 (migration 0011): app.is_staff and app.current_client_id. MUST be called inside an open
 transaction, right after it begins, at every session-open site. A session that opens on
-pantera_app WITHOUT this call sees zero rows from policied tables (default-deny) — the safe
+vespera_app WITHOUT this call sees zero rows from policied tables (default-deny) — the safe
 failure mode (breaks loudly, never leaks).
 """
 

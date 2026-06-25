@@ -57,11 +57,11 @@ uv run pytest tests/unit/test_rrf_fusion.py tests/unit/test_query_cache_key.py \
   tests/unit/test_corroboration.py tests/unit/test_version_mismatch.py
 
 # integration (live stack)
-PANTERA_INTEGRATION=1 uv run pytest tests/integration/test_retrieval_*.py \
+VESPERA_INTEGRATION=1 uv run pytest tests/integration/test_retrieval_*.py \
   tests/integration/test_modelserver_rerank.py
 
 # the RAG eval GATE (seeds golden corpus, scores, asserts thresholds)
-PANTERA_INTEGRATION=1 uv run pytest tests/integration/test_rag_eval.py -q
+VESPERA_INTEGRATION=1 uv run pytest tests/integration/test_rag_eval.py -q
 # manual scorer (parity with the classifier gate)
 uv run python eval/rag/run_rag_eval.py
 ```

@@ -7,7 +7,7 @@ Create Date: 2026-06-17
 Adds the delivery lifecycle (sent/delivered/delivery_failed) to reports, per-channel
 delivery_attempt tracking (RLS-policied like every client-scoped table — Constitution V),
 and SFTP destination metadata on clients (the SFTP credential lives in n8n, not here — D7).
-Re-grants table/sequence privileges to the least-privilege pantera_app role because 0011's
+Re-grants table/sequence privileges to the least-privilege vespera_app role because 0011's
 blanket grant predates the new table.
 """
 
@@ -21,7 +21,7 @@ down_revision: str | None = "0011"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-_APP_ROLE = "pantera_app"
+_APP_ROLE = "vespera_app"
 
 _STATUS_OLD = (
     "status IN ('drafted','under_review','approved','rejected',"

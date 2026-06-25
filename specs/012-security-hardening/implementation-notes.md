@@ -52,12 +52,12 @@ The sidecar itself: copy `modelserver/` structure (`modelserver/Dockerfile`, `mo
 ### Migration 0011 (`app/db/migrations/versions/0011_rls_policies.py`)
 - `revision = "0011"`, `down_revision = "0010"`. Copy the header/imports style of `0010_scheduling.py`.
 - Use `op.execute("...")` with the policy template from `contracts/rls-policies.md` for each policied table (loop over a Python list of `(table, scope_col)` to stay DRY and auditable).
-- `GRANT ... TO pantera_app` per table. Assume the role EXISTS (bootstrap-created); guard grants so a missing role gives a clear error.
+- `GRANT ... TO vespera_app` per table. Assume the role EXISTS (bootstrap-created); guard grants so a missing role gives a clear error.
 - Downgrade: drop policy, `NO FORCE`, `DISABLE ROW LEVEL SECURITY`, revoke grants. Do NOT drop the role in downgrade.
 - env.py (`app/db/migrations/env.py`) imports all model modules so `Base.metadata` is populated — **no change needed** unless you add a model (you don't). Migrations run on `database_url` (privileged) — correct as-is.
 
 ### Role + secret provisioning
-- New role `pantera_app` created at DB bootstrap: add an init SQL to `docker-compose.yml` (postgres `volumes:` mount of an init script, or a one-shot), a CI step on the fresh Postgres service, and have `scripts/write_secrets.py` write `app_database_url = postgresql+asyncpg://pantera_app:<pw>@.../pantera`. Password must match the role.
+- New role `vespera_app` created at DB bootstrap: add an init SQL to `docker-compose.yml` (postgres `volumes:` mount of an init script, or a one-shot), a CI step on the fresh Postgres service, and have `scripts/write_secrets.py` write `app_database_url = postgresql+asyncpg://vespera_app:<pw>@.../vespera`. Password must match the role.
 - `app_database_url` + `guardrails_token` → add to `_REQUIRED_SECRETS` (`app/core/startup.py:13`) AND the CI inline secret writer in `.github/workflows/ci.yml` (spec-2 lesson: a new required secret missing from the CI writer fails alembic/tests fast). Also `scripts/write_secrets.py` and `docker-compose`.
 
 ### Engine + context
@@ -93,7 +93,7 @@ For every task: `ruff check` + `black --check` clean (include `guardrails/` in t
 1. **Forgetting `set_rls_context` at a session-open site** → that path silently returns 0 rows (default-deny). Symptom: a pipeline stage "finds nothing." Audit every `session.begin()`.
 2. **Using scispaCy for PII** → wrong entities. Use `en_core_web_sm` for Presidio.
 3. **Putting RLS on `users`** → breaks login (pre-context lookup). It is EXEMPT.
-4. **Role not created before migration in CI** → grants fail. Create `pantera_app` at DB bootstrap, before `alembic upgrade`.
+4. **Role not created before migration in CI** → grants fail. Create `vespera_app` at DB bootstrap, before `alembic upgrade`.
 5. **Redacting the persisted report body** → destroys clinical content. Redaction is EGRESS-ONLY.
 6. **Adding torch to the guardrails sidecar** → constitution violation. Keep it torch-free.
 7. **New required secret missing from CI inline writer** → alembic/tests fail fast (spec-2 lesson). Wire `app_database_url` everywhere secrets are written.

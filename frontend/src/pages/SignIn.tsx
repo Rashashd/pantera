@@ -1,6 +1,6 @@
 /**
- * Sign-in page — finalized split layout from the "Pantera Login Split" design
- * handoff. Left brand panel (lockup, the "Why Pantera?" note, a faded panther
+ * Sign-in page — finalized split layout from the "Vespera Login Split" design
+ * handoff. Left brand panel (lockup, the "Why Vespera?" note, a faded panther
  * watermark, ambient orbs + vignette); right form panel (heading, tagline,
  * real sign-in form, theme toggle). Both panels follow the active theme, so
  * light mode is light edge-to-edge. Stacks to the form alone on narrow screens.
@@ -21,7 +21,7 @@ export default function SignIn() {
         {/* faded panther watermark, bleeding off the lower-right */}
         <PantherMark
           variant="mono"
-          className="pointer-events-none absolute -bottom-[12%] -right-[14%] h-[88%] w-auto text-pantera-teal opacity-[0.13] mix-blend-multiply dark:text-pantera-tealLt dark:opacity-20 dark:mix-blend-screen"
+          className="pointer-events-none absolute -bottom-[12%] -right-[14%] h-[88%] w-auto text-vespera-teal opacity-[0.13] mix-blend-multiply dark:text-vespera-tealLt dark:opacity-20 dark:mix-blend-screen"
         />
         {/* vignette */}
         <div className="login-vignette pointer-events-none absolute inset-0" />
@@ -35,7 +35,7 @@ export default function SignIn() {
 
         {/* story */}
         <div className="relative z-10 max-w-[440px]">
-          <div className="mb-5 font-mono text-[10.5px] uppercase tracking-[0.26em] text-pantera-teal dark:text-pantera-tealLt">
+          <div className="mb-5 font-mono text-[10.5px] uppercase tracking-[0.26em] text-vespera-teal dark:text-vespera-tealLt">
             Why Vespera?
           </div>
           <h2 className="mb-5 font-display text-[25px] font-medium leading-[1.32] tracking-[-0.01em] text-foreground">
@@ -77,7 +77,7 @@ export default function SignIn() {
           <h1 className="mb-2 font-display text-[26px] font-semibold tracking-[-0.015em] text-foreground">
             Sign in to your console
           </h1>
-          <p className="mb-[34px] font-mono text-[11px] uppercase tracking-[0.2em] text-pantera-teal dark:text-pantera-tealLt">
+          <p className="mb-[34px] font-mono text-[11px] uppercase tracking-[0.2em] text-vespera-teal dark:text-vespera-tealLt">
             Automated vigilance. Human precision.
           </p>
 

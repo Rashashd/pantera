@@ -1,7 +1,7 @@
 [project]
-name = "pantera"
+name = "vespera"
 version = "0.1.0"
-description = "Pantera — automated pharmacovigilance literature monitor (platform foundation)"
+description = "Vespera — automated pharmacovigilance literature monitor (platform foundation)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115",
@@ -99,7 +99,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-q"
 markers = [
-    "integration: marks tests that require live services (DB/Redis/Vault); run with PANTERA_INTEGRATION=1",
+    "integration: marks tests that require live services (DB/Redis/Vault); run with VESPERA_INTEGRATION=1",
 ]
 # Safety net: no single test may block the run forever (a stalled external call once hung
 # CI for an hour). On Linux/CI this uses SIGALRM and fails just the offending test (named,

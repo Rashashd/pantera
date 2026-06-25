@@ -11,7 +11,7 @@
 
 ## Summary
 
-Deliver the single-page web application that puts a human in front of Pantera's pipeline, plus the
+Deliver the single-page web application that puts a human in front of Vespera's pipeline, plus the
 thin backend it needs. Four surfaces behind one JWT sign-in, role-routed:
 
 1. **Reviewer HITL queue (P1, the MVP)** — drafts-only action queue (expedited-first + SLA

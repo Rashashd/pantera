@@ -59,7 +59,7 @@ is Spec 7).
 payload (correct `chunk_type`, section tagging, table-row integrity, figure-caption isolation);
 section-aware chunker (size/overlap/cap, exact token counting, oversized-section split); source
 selection (FR-024); failure classification (transient vs permanent). Integration tests (live stack,
-`PANTERA_INTEGRATION=1`): full build over seeded documents → chunks persisted with embeddings;
+`VESPERA_INTEGRATION=1`): full build over seeded documents → chunks persisted with embeddings;
 idempotent re-run (0 new chunks, 0 embed calls); client isolation; concurrent double-trigger → one
 run, no duplicate chunks; PII-free logs (`capsys`/structlog); migration up **and** down on the live
 DB. The embedder is consumed via the modelserver (live) or a stubbed `ModelserverClient` in unit

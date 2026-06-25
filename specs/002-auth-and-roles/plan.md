@@ -27,7 +27,7 @@ structlog, hvac (Vault). New runtime dependency: `fastapi-users[sqlalchemy]`.
 `audit_log`. Migrations via Alembic (new `0002_auth` revision on top of `0001` baseline).
 
 **Testing**: pytest + pytest-asyncio + httpx. Unit (stack-free) + integration (gated by
-`PANTERA_INTEGRATION=1` with live Postgres/Redis/Vault). Constitution: 95%+ coverage on the
+`VESPERA_INTEGRATION=1` with live Postgres/Redis/Vault). Constitution: 95%+ coverage on the
 auth and DB-write paths; ≥80% overall.
 
 **Target Platform**: Linux container (modular monolith API), same image as spec-1.

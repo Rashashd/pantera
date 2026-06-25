@@ -181,7 +181,7 @@ export default function Costs() {
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-pantera-tealLt"
+                      className="h-full rounded-full bg-vespera-tealLt"
                       style={{ width: `${Math.max(2, (r.cost / maxSiteCost) * 100)}%` }}
                     />
                   </div>

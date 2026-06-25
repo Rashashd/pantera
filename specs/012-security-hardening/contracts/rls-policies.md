@@ -4,10 +4,10 @@
 
 | Role | Privileges | Used by | Connection string |
 |---|---|---|---|
-| `pantera_app` (NEW) | LOGIN, NOSUPERUSER, NOBYPASSRLS, table SELECT/INSERT/UPDATE/DELETE via GRANT; NOT table owner | FastAPI app + ARQ worker (runtime) | `app_database_url` (Vault, `_REQUIRED_SECRETS`) |
-| `pantera` (existing) | DB owner / superuser (dev) — bypasses RLS | Alembic migrations + seed scripts | `database_url` (Vault, existing) |
+| `vespera_app` (NEW) | LOGIN, NOSUPERUSER, NOBYPASSRLS, table SELECT/INSERT/UPDATE/DELETE via GRANT; NOT table owner | FastAPI app + ARQ worker (runtime) | `app_database_url` (Vault, `_REQUIRED_SECRETS`) |
+| `vespera` (existing) | DB owner / superuser (dev) — bypasses RLS | Alembic migrations + seed scripts | `database_url` (Vault, existing) |
 
-Role `pantera_app` is created at **DB bootstrap** (compose init SQL + CI step + `write_secrets.py`), NOT in the migration. Password MUST match `app_database_url`.
+Role `vespera_app` is created at **DB bootstrap** (compose init SQL + CI step + `write_secrets.py`), NOT in the migration. Password MUST match `app_database_url`.
 
 ## Policy template (applied per policied table)
 
@@ -23,7 +23,7 @@ CREATE POLICY tenant_isolation ON <t>
     current_setting('app.is_staff', true) = 'on'
     OR <scope_col> = NULLIF(current_setting('app.current_client_id', true), '')::bigint
   );
-GRANT SELECT, INSERT, UPDATE, DELETE ON <t> TO pantera_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON <t> TO vespera_app;
 ```
 - `<scope_col>` = `client_id` for all tables except `clients` where it is `id`.
 - `WITH CHECK` blocks INSERT/UPDATE into another client's scope (write isolation, FR + CHK031).
@@ -55,7 +55,7 @@ async def set_rls_context(session, *, client_id: int | None, is_staff: bool) -> 
 - Worker/pipeline/agent/lifespan-ingestion sessions: `(client_id=None, is_staff=True)` (system context).
 - Migrations/seed: no context needed (privileged role bypasses).
 
-**Default-deny invariant**: any session that opens on `pantera_app` without `set_rls_context` returns zero rows from policied tables. This is the safe failure mode — it breaks loudly, never leaks.
+**Default-deny invariant**: any session that opens on `vespera_app` without `set_rls_context` returns zero rows from policied tables. This is the safe failure mode — it breaks loudly, never leaks.
 
 ## Engine contract (`app/db/base.py`)
 

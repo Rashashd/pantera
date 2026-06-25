@@ -33,7 +33,7 @@
 
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`.
 - Validation passed on first iteration: the spec is grounded in the source brief/guide
-  (Pantera_Brief.md §3–4, Pantera_Guide.md Day 2 + DB schema) and the spec-3 carryover notes.
+  (Vespera_Brief.md §3–4, Vespera_Guide.md Day 2 + DB schema) and the spec-3 carryover notes.
 - Source names (PubMed, Europe PMC, openFDA, FDA MedWatch, EMA, MHRA) and the source-reliability
   enum values are retained as **domain/business** identifiers (the named external sources and the
   required reliability tiers), not implementation choices — consistent with how spec 3 named ICH

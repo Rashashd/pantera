@@ -51,7 +51,7 @@ _JAILBREAK_PATTERNS = [
 _JAILBREAK_DAN = re.compile(r"\bDAN\b")
 
 # --- Rail 3: topic scope. ---
-# Pantera is a pharmacovigilance assistant. Block explicit off-domain TASK requests
+# Vespera is a pharmacovigilance assistant. Block explicit off-domain TASK requests
 # (imperative "write a poem / give me a recipe / translate ..."); clinical narrative is
 # declarative and never trips these, keeping false-refusal at zero.
 _TOPIC_OFFSCOPE_PATTERNS = [

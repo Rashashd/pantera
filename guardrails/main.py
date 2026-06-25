@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
     from guardrails.routes import router
 
     config = get_config()
-    app = FastAPI(title="Pantera Guardrails", version="0.1.0", lifespan=_lifespan)
+    app = FastAPI(title="Vespera Guardrails", version="0.1.0", lifespan=_lifespan)
     app.state.config = config
     app.include_router(router)
 

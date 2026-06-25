@@ -7,7 +7,7 @@ import os
 import pytest
 
 pytestmark = pytest.mark.skipif(
-    not os.getenv("PANTERA_INTEGRATION"),
+    not os.getenv("VESPERA_INTEGRATION"),
     reason="requires the Compose stack (Vault + Postgres + Redis)",
 )
 

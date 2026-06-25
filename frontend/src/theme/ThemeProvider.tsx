@@ -12,7 +12,7 @@ const ThemeContext = createContext<ThemeContextValue>({
   toggle: () => {},
 });
 
-const STORAGE_KEY = "pantera_theme";
+const STORAGE_KEY = "vespera_theme";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(

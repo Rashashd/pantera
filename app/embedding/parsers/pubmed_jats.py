@@ -21,11 +21,13 @@ class PubMedParser:
         Raises:
             ParseError: If XML is malformed (caught at call site for classification).
         """
+        # The PubMed adapter stores efetch metadata as a dict (pmid/doi/title/abstract); a JATS
+        # XML string only arrives on a full-text fetch. Handle both, mirroring EuropePMCParser.
         if isinstance(raw_payload, dict):
-            raise ValueError("PubMed parser expects XML string, not dict")
+            return self._parse_metadata_dict(raw_payload)
 
         if not isinstance(raw_payload, str):
-            raise ValueError(f"Expected str, got {type(raw_payload)}")
+            raise ValueError(f"Expected str or dict, got {type(raw_payload)}")
 
         try:
             root = etree.fromstring(raw_payload.encode("utf-8"))
@@ -112,6 +114,29 @@ class PubMedParser:
                                 )
                             )
 
+        return chunks
+
+    def _parse_metadata_dict(self, payload: dict) -> list[ParsedChunk]:
+        """Build chunks from PubMed efetch metadata (title + abstract) when no JATS XML exists."""
+        chunks: list[ParsedChunk] = []
+        title = (payload.get("title") or "").strip()
+        if title:
+            chunks.append(
+                ParsedChunk(
+                    text=self._normalize_text(title),
+                    chunk_type=ChunkType.TEXT,
+                    section="Title",
+                )
+            )
+        abstract = (payload.get("abstract") or "").strip()
+        if abstract:
+            chunks.append(
+                ParsedChunk(
+                    text=self._normalize_text(abstract),
+                    chunk_type=ChunkType.TEXT,
+                    section="Abstract",
+                )
+            )
         return chunks
 
     @staticmethod

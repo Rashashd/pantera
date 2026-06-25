@@ -1,4 +1,4 @@
-# Slim MeSH canonical heading list for Pantera literature ingestion (spec 4, D11).
+# Slim MeSH canonical heading list for Vespera literature ingestion (spec 4, D11).
 # Generated from: NLM MeSH 2024 ASCII distribution (d2024.bin), headings only.
 # Operator update: re-run scripts/generate_mesh_list.py (not committed; see docs/RUNBOOK.md).
 Abciximab

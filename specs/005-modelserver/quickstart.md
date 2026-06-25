@@ -1,7 +1,7 @@
 # Quickstart: Modelserver — build, run, validate
 
 > Validation/run guide only — implementation lives in `tasks.md` + the code. Assumes the existing
-> Pantera stack conventions (Vault dev mode, `uv`, docker-compose). See
+> Vespera stack conventions (Vault dev mode, `uv`, docker-compose). See
 > [dev-environment](../../memory/dev-environment.md).
 
 ## Prerequisites
@@ -48,7 +48,7 @@ curl -s -o /dev/null -w "%{http_code}" -X POST localhost:<port>/classify \
 ## 4. Run the test suite
 ```bash
 uv sync --group modelserver
-PANTERA_INTEGRATION=1 uv run pytest tests/unit/test_manifest_hashing.py \
+VESPERA_INTEGRATION=1 uv run pytest tests/unit/test_manifest_hashing.py \
   tests/unit/test_truncation.py tests/unit/test_version_stamp.py \
   tests/integration/test_classify_contract.py tests/integration/test_embed_contract.py \
   tests/integration/test_auth_and_health.py tests/integration/test_batch_limits.py

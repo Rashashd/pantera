@@ -1,7 +1,7 @@
 """Integration tests: ARQ reliability + due-watchlist selection (spec 11 T012/T036/T040).
 
 These tests require a live Postgres + Redis stack:
-    PANTERA_INTEGRATION=1 uv run pytest tests/integration/test_scheduling_reliability.py -v
+    VESPERA_INTEGRATION=1 uv run pytest tests/integration/test_scheduling_reliability.py -v
 
 They exercise:
 - T012: idempotency, retry-then-succeed, permanent-no-retry, dead-letter-on-exhaustion,
@@ -19,8 +19,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-_INTEGRATION = bool(os.getenv("PANTERA_INTEGRATION"))
-pytestmark = pytest.mark.skipif(not _INTEGRATION, reason="requires PANTERA_INTEGRATION=1")
+_INTEGRATION = bool(os.getenv("VESPERA_INTEGRATION"))
+pytestmark = pytest.mark.skipif(not _INTEGRATION, reason="requires VESPERA_INTEGRATION=1")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
